@@ -1,0 +1,212 @@
+# ============================================================================
+# ASP.NET Core / C# - Build Artifacts
+# ============================================================================
+
+# Compiled binaries and intermediate output
+bin/
+obj/
+
+# ============================================================================
+# IDE & Editor Configuration - Visual Studio / VS Code
+# ============================================================================
+
+# Visual Studio 2022 workspace state and local cache (includes solution user options)
+.vs/
+
+# VS Code workspace settings (ignore all, but can be selectively tracked)
+.vscode/
+# To share workspace settings, selectively re-add: !.vscode/settings.json
+
+# IDE user-specific files
+*.user
+*.suo
+*.sln.docstates
+
+# ============================================================================
+# Build & Runtime Caching
+# ============================================================================
+
+# NuGet package cache and lock files (local restoration only)
+*.nupkg
+.nuget/
+
+# Local NuGet cache
+~/.nuget/
+
+# EF Core migration temporary files and scaffolding artifacts
+**/Migrations/*.Designer.cs.old
+**/Migrations/*.Snapshot.cs.old
+
+# ASP.NET Core runtime cache
+.runtimeconfig.json
+
+# ============================================================================
+# Testing - Build Artifacts & Results
+# ============================================================================
+
+# Test result output (xUnit, MSTest, NUnit, etc.)
+TestResults/
+coverage/
+coverage.json
+*.coveragexml
+*.trx
+
+# ============================================================================
+# Database & SQL Server
+# ============================================================================
+
+# SQL Server local database files
+*.mdf
+*.ldf
+*.ndf
+
+# Entity Framework Core scaffolding artifacts
+*.dbmdl
+*.edmx
+*.edmx.diagram
+
+# SQL Server profiler files
+*.prof
+
+# ============================================================================
+# Logging & Diagnostics
+# ============================================================================
+
+# Log files
+*.log
+logs/
+Logs/
+*.diagnostic
+
+# Event logs (Windows)
+*.evtx
+
+# ============================================================================
+# Local Development & Secrets
+# ============================================================================
+
+# Local environment files (appsettings with secrets)
+appsettings.Local.json
+appsettings.*.local.json
+appsettings.Secrets.json
+
+# Environment variable files
+.env
+.env.local
+.env.*.local
+
+# User secrets (ASP.NET Core local development)
+**/Properties/launchSettings.json.local
+secrets.json
+
+# SSL certificates for local development
+*.pfx
+*.pem
+*.key
+*.crt
+
+# ============================================================================
+# Operating System Files
+# ============================================================================
+
+# Windows
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+.directory
+
+# ============================================================================
+# IDE Extensions & Plugins
+# ============================================================================
+
+# Rider (JetBrains IDE for .NET)
+.idea/
+*.sln.iml
+*.iml
+
+# Resharper files
+_ReSharper*/
+
+# ============================================================================
+# Package Management
+# ============================================================================
+
+# Node modules (if using npm/yarn for frontend tooling)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Bower components
+bower_components/
+
+# ============================================================================
+# Build Output & Artifacts
+# ============================================================================
+
+# Published application output
+publish/
+PublishProfiles/
+*.publishsettings
+*.pubxml
+
+# MSBuild intermediate files
+*.metaproj
+*.metaproj.tmp
+
+# Visual Studio cache directory
+.vs/
+
+# ============================================================================
+# Analysis & Metrics
+# ============================================================================
+
+# Code analysis results
+*_Analysis/
+*.runsettings.user
+
+# StyleCop analysis cache
+StyleCopCache/
+
+# ============================================================================
+# INTENTIONALLY TRACKED (DO NOT IGNORE)
+# ============================================================================
+
+# Documentation - Project Context & ADRs
+!docs/
+!docs/prompts/
+!docs/prompts/**
+!docs/decisions/
+!docs/decisions/**
+!docs/project/
+!docs/project/**
+
+# Source Code & Configuration
+!src/
+!src/**/*.cs
+!src/**/*.csproj
+!src/**/*.sln
+!Ecommerce.sln
+
+# Entity Framework Migrations (Schema Changes)
+!**/Migrations/
+!**/Migrations/**/*.cs
+
+# Tests
+!tests/
+!tests/**/*.cs
+!tests/**/*.csproj
+
+# Project Configuration
+!instructions/
+!instructions/**
+!README.md
+!AGENT.md

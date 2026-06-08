@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ecommerce.Auth.Domain\Ecommerce.Auth.Domain.csproj" />
+    <ProjectReference Include="..\Ecommerce.Auth.Contracts\Ecommerce.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Ecommerce.BuildingBlocks.Application\Ecommerce.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
