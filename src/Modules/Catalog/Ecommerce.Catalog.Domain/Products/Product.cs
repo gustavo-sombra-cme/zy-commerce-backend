@@ -51,6 +51,18 @@ public sealed class Product
         UpdatedAt = updatedAt;
     }
 
+    public void UpdateDetails(ProductName name, string? description, DateTimeOffset updatedAt)
+    {
+        if (updatedAt == default)
+        {
+            throw new ArgumentException("Updated timestamp is required.", nameof(updatedAt));
+        }
+
+        Name = name;
+        Description = NormalizeDescription(description);
+        UpdatedAt = updatedAt;
+    }
+
     private static string? NormalizeDescription(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))

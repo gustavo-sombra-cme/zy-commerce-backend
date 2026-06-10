@@ -135,4 +135,87 @@ public sealed class ProductTests
 
         Assert.Throws<ArgumentException>(() => product.Deactivate(default));
     }
+
+    [Fact]
+    public void UpdateDetails_WithValidValues_UpdatesNameDescriptionAndUpdatedAt()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            "Original description",
+            DateTimeOffset.UtcNow);
+        var updatedAt = DateTimeOffset.UtcNow.AddMinutes(1);
+
+        product.UpdateDetails(ProductName.Create("Updated Product"), "Updated description", updatedAt);
+
+        Assert.Equal("Updated Product", product.Name.Value);
+        Assert.Equal("Updated description", product.Description);
+        Assert.Equal(updatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public void UpdateDetails_PreservesSkuAndActiveState()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            DateTimeOffset.UtcNow);
+
+        product.UpdateDetails(
+            ProductName.Create("Updated Product"),
+            "Updated description",
+            DateTimeOffset.UtcNow.AddMinutes(1));
+
+        Assert.Equal("SKU-001", product.Sku.Value);
+        Assert.True(product.IsActive);
+    }
+
+    [Fact]
+    public void UpdateDetails_WithWhitespaceDescription_StoresNullDescription()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            "Original description",
+            DateTimeOffset.UtcNow);
+
+        product.UpdateDetails(
+            ProductName.Create("Updated Product"),
+            "   ",
+            DateTimeOffset.UtcNow.AddMinutes(1));
+
+        Assert.Null(product.Description);
+    }
+
+    [Fact]
+    public void UpdateDetails_WithOverlongDescription_Throws()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            DateTimeOffset.UtcNow);
+        var description = new string('A', Product.DescriptionMaxLength + 1);
+
+        Assert.Throws<ArgumentException>(() => product.UpdateDetails(
+            ProductName.Create("Updated Product"),
+            description,
+            DateTimeOffset.UtcNow.AddMinutes(1)));
+    }
+
+    [Fact]
+    public void UpdateDetails_WithDefaultUpdatedAt_Throws()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            DateTimeOffset.UtcNow);
+
+        Assert.Throws<ArgumentException>(() => product.UpdateDetails(
+            ProductName.Create("Updated Product"),
+            null,
+            default));
+    }
 }

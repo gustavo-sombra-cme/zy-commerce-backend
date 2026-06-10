@@ -2,8 +2,10 @@ using Ecommerce.Catalog.Application.Products.CreateProduct;
 using Ecommerce.Catalog.Application.Products.DeactivateProduct;
 using Ecommerce.Catalog.Application.Products.GetProductById;
 using Ecommerce.Catalog.Application.Products.SearchProducts;
+using Ecommerce.Catalog.Application.Products.UpdateProductDetails;
 using Ecommerce.Catalog.Contracts.Products;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ecommerce.Api.Controllers.Catalog;
@@ -71,7 +73,10 @@ public sealed class ProductsController(ISender sender) : ControllerBase
             product.UpdatedAt));
     }
 
+    [Authorize]
     [HttpPost]
+    [ProducesResponseType(typeof(CreateProductResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<CreateProductResponse>> CreateProduct(
         CreateProductRequest request,
         CancellationToken cancellationToken)
@@ -85,7 +90,26 @@ public sealed class ProductsController(ISender sender) : ControllerBase
         return Created($"/api/catalog/products/{response.ProductId}", response);
     }
 
+    [Authorize]
+    [HttpPut("{productId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateProductDetails(
+        Guid productId,
+        UpdateProductDetailsRequest request,
+        CancellationToken cancellationToken)
+    {
+        await sender.Send(
+            new UpdateProductDetailsCommand(productId, request.Name, request.Description),
+            cancellationToken);
+
+        return NoContent();
+    }
+
+    [Authorize]
     [HttpDelete("{productId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> DeactivateProduct(
         Guid productId,
         CancellationToken cancellationToken)

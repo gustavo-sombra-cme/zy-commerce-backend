@@ -28,6 +28,22 @@ Controllers may only:
 
 ---
 
+# DDD OWNERSHIP RULES
+
+Each module owns its own Domain, Application, Infrastructure, Contracts, and persistence model.
+
+Aggregates own business state transitions and invariants.
+
+Value objects belong in Domain and must not be removed for persistence convenience.
+
+Application coordinates use cases through commands, queries, handlers, validators, DTOs, and abstractions.
+
+Infrastructure persists module-owned models and implements external concerns behind Application abstractions.
+
+Controllers must not own domain behavior, persistence logic, or cross-module integration logic.
+
+---
+
 # DATABASE RULES
 
 Use:

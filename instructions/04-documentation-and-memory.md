@@ -40,6 +40,14 @@ The only exception is when the user explicitly writes:
 
 SKIP PROMPT LOG
 
+Historical prompt logs must not be rewritten for template cleanup or style normalization.
+
+Reusable prompt guidance belongs in:
+
+docs/project/PROMPT_TEMPLATE.md
+
+Do not place reusable templates inside `docs/prompts/`; that directory is for chronological prompt logs.
+
 ---
 
 # AI PROJECT MEMORY RULE

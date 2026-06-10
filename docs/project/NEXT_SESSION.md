@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-06-08
+**Last Updated:** 2026-06-09
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -9,10 +9,24 @@ This file is designed to allow a future AI session to resume project work in les
 ## Last Completed Work
 
 - Auth module skeleton creation (Domain, Application, Infrastructure, Contracts projects)
+- Auth User aggregate domain model (`User`, `UserId`, `Email`, `PasswordHash`)
+- Auth Register User Application layer (`RegisterUserCommand`, handler, validator, result, abstractions)
+- Auth Register User persistence and API endpoint (`POST /api/auth/users/register`)
+- Auth Login User Application layer (`LoginUserCommand`, handler, validator, result, abstractions)
+- Auth Login User persistence and API endpoint (`POST /api/auth/users/login`)
+- Auth JWT access token generation for successful login
+- Auth JWT bearer validation and protected Current User endpoint (`GET /api/auth/users/me`)
+- Swagger JWT authorization and protected Catalog write endpoints
+- Catalog Update Product Details (`PUT /api/catalog/products/{productId}`)
+- Swagger Authentication Integration
+- Revisit Swagger/API Authentication Integration
+- JWT default authentication scheme fix
 - AI project memory documentation structure (PROJECT_STATUS.md, AI_HANDOFF.md, ROADMAP.md)
 - AGENT.md router implementation with detailed instruction file split
 - Architecture rules and testing enforcement
 - Instruction file consolidation (V2 rule set)
+- Prompt standardization and reusable prompt template setup (`docs/project/PROMPT_TEMPLATE.md`)
+- Prompt template compliance contract enhancement for complete short-prompt plans
 
 ---
 
@@ -40,20 +54,21 @@ All approved projects exist and build successfully:
 ### Database Status
 
 - **Persistence:** SQL Server LocalDB `(localdb)\mssqllocaldb`
-- **Connection String:** `(localdb)\mssqllocaldb` in `appsettings.json`
-- **Migrations:** One Catalog migration (`20260608111338_InitialCatalogSchema.cs`)
-- **Auth Persistence:** None (skeleton only, no DbContext)
+- **Connection Strings:** `ConnectionStrings:Catalog` and `ConnectionStrings:Auth` in `appsettings.Development.json`
+- **Catalog Migration:** `20260608111338_InitialCatalogSchema.cs`
+- **Auth Migration:** `20260609092505_InitialAuthSchema.cs`
+- **Auth Persistence:** `EcommerceAuth` LocalDB database updated through `InitialAuthSchema`
 
 ### Build & Test Status
 
-Last verified pass (2026-06-08):
+Last verified pass (2026-06-09):
 ```
 dotnet restore Ecommerce.sln    ✓ PASSED
 dotnet build Ecommerce.sln       ✓ PASSED
 dotnet test Ecommerce.sln        ✓ PASSED
-  - Catalog Unit Tests: 47 passed
-  - Architecture Tests: 11 passed
-  - Auth Unit Tests: 0 (skeleton has no tests)
+  - Catalog Unit Tests: 61 passed
+  - Architecture Tests: 24 passed
+  - Auth Unit Tests: 65 passed
 ```
 
 ---
@@ -94,37 +109,45 @@ Catalog ← ↛ Auth (no cross-module references)
 ### Catalog Module (Complete)
 
 **Implemented Features:**
-- Create Product (POST /api/catalog/products)
+- Create Product (POST /api/catalog/products, protected)
 - Get Product By Id (GET /api/catalog/products/{productId})
 - Search/List Products with pagination (GET /api/catalog/products)
-- Deactivate Product (DELETE /api/catalog/products/{productId})
+- Update Product Details (PUT /api/catalog/products/{productId}, protected)
+- Deactivate Product (DELETE /api/catalog/products/{productId}, protected)
 
 **Key Decisions:**
 - Product search uses infrastructure read model (`ProductSearchReadModel`, `CatalogReadDbContext`)
 - See: `docs/decisions/ADR-001-product-search-read-model.md`
 - Do NOT revert to aggregate value object access inside EF queries
+- Catalog write endpoints require a valid bearer token.
+- Catalog read endpoints remain public.
 
 **Entities:**
 - `Product` (aggregate root)
 - Value objects: `ProductId`, `Sku`, `ProductName`
 - DTOs: `ProductDto`, `PaginatedProductsDto`
 
-### Auth Module (Skeleton Only)
+### Auth Module (Register User + Login User API, Persistence, JWT Access Token, And Current User Endpoint)
 
 **Current State:**
 - Projects exist: Domain, Application, Infrastructure, Contracts, UnitTests
-- No business features implemented
-- No DbContext
-- No migrations
-- No API endpoints
+- Domain model exists: `User`, `UserId`, `Email`, `PasswordHash`
+- Domain behaviors exist: Register, VerifyEmail, ChangePassword, Deactivate, Reactivate
+- Application registration use case exists: `RegisterUserCommand`, handler, validator, result, duplicate email exception, and abstractions
+- Application login use case exists: `LoginUserCommand`, handler, validator, result, invalid credentials exception, inactive user exception, and abstractions
+- Infrastructure support exists: `AuthDbContext`, `UserConfiguration`, `UserRepository`, `PasswordHasher`, and DI registration
+- JWT access token support exists: `IAccessTokenGenerator`, `AccessTokenResult`, `JwtOptions`, `JwtAccessTokenGenerator`
+- JWT bearer validation is configured in the API using existing `Auth:Jwt` settings, with explicit default authenticate and challenge schemes
+- Authentication and authorization middleware are registered
+- Swagger/OpenAPI uses the standard HTTP bearer scheme and per-operation security metadata for `[Authorize]` actions. Enter the raw JWT access token in Swagger Authorize; Swagger UI sends `Authorization: Bearer {token}`. Swagger UI authorization persistence is enabled.
+- Contracts exist: `RegisterUserRequest`, `RegisterUserResponse`, `LoginUserRequest`, `LoginUserResponse`, `GetCurrentUserResponse`
+- API endpoints exist: `POST /api/auth/users/register`, `POST /api/auth/users/login`, `GET /api/auth/users/me`
+- Manual Auth migration exists: `20260609092505_InitialAuthSchema.cs`
 
 **Intentionally Absent:**
-- User aggregate
-- JWT/authentication logic
-- Password hashing
 - Refresh token strategy
 - Roles/permissions
-- API integration
+- Token persistence
 
 Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
@@ -141,7 +164,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 ## Current Phase
 
-**Phase:** Architecture Stabilization + Memory Documentation
+**Phase:** Revisit Swagger/API Authentication Integration
 
 **Completed Phases:**
 1. Solution skeleton
@@ -151,15 +174,31 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 5. Database persistence
 6. Global error handling
 7. Auth module skeleton
-8. Project memory documentation
-9. AGENT.md router and instruction file split
+8. Auth User aggregate domain model
+9. Auth Register User Application layer
+10. Auth Register User persistence and API endpoint
+11. Auth Login User Application layer
+12. Auth Login User persistence and API endpoint
+13. Auth JWT access token generation
+14. Auth JWT bearer validation and protected Current User endpoint
+15. Swagger JWT authorization and protected Catalog write endpoints
+16. JWT default authentication scheme fix
+17. Project memory documentation
+18. AGENT.md router and instruction file split
+19. Prompt standardization and reusable prompt template setup
+20. Prompt template compliance contract enhancement
+21. Catalog Update Product Details
+22. Swagger Authentication Integration
+23. Revisit Swagger/API Authentication Integration
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
 
 **Next Phases (When Explicitly Approved):**
-- Additional Catalog features (Update Product, Reactivate Product, etc.)
-- Auth business feature design and implementation
+- Additional Catalog features (Reactivate Product, product uniqueness hardening, etc.)
+- Auth refresh token planning
+- Auth broader protected endpoint authorization planning
+- Catalog write authorization policy refinement
 - Integration testing setup
 - Platform features (health checks, logging, API versioning, etc.)
 
@@ -169,7 +208,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was infrastructure and documentation setup. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new feature or architectural work.
+The last completed work was Revisit Swagger/API Authentication Integration. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 **How to Proceed:**
 
@@ -191,10 +230,11 @@ When resuming in a new session, read these files in this exact order:
 5. `instructions/03-cqrs-database-testing-security.md` (CQRS, database, testing, security rules)
 6. `instructions/04-documentation-and-memory.md` (prompt logging, project memory rules)
 7. `instructions/05-completion.md` (self-review and task completion rules)
-8. `docs/project/PROJECT_STATUS.md` (current implementation snapshot)
-9. `docs/project/ROADMAP.md` (completed and candidate work)
-10. Latest files in `docs/prompts/` (recent work context)
-11. Relevant ADRs in `docs/decisions/` (architectural decisions)
+8. `docs/project/PROMPT_TEMPLATE.md` (reusable short-prompt workflow)
+9. `docs/project/PROJECT_STATUS.md` (current implementation snapshot)
+10. `docs/project/ROADMAP.md` (completed and candidate work)
+11. Latest files in `docs/prompts/` (recent work context)
+12. Relevant ADRs in `docs/decisions/` (architectural decisions)
 
 **Expected Time:** ~5 minutes to read all
 
@@ -242,17 +282,15 @@ All architecture, planning, execution, testing, and documentation work must be l
 
 **Exception:** User may write `SKIP PROMPT LOG` to override this requirement for documentation-only work.
 
-### Important: Auth is Not Ready
+### Important: Auth Has Access Tokens And /me Only
 
-The Auth module exists as a skeleton only.
+The Auth module can register users through `POST /api/auth/users/register`, verify credentials through `POST /api/auth/users/login`, and return the current authenticated user through `GET /api/auth/users/me`. Login returns a short-lived JWT access token. The `/me` endpoint requires a valid bearer token and returns only `userId` and `email`. Catalog product write endpoints (`POST`, `PUT`, and `DELETE`) require a valid bearer token; Catalog product read endpoints remain public. Swagger has an Authorize button for JWT access tokens; enter the raw JWT access token and Swagger UI sends `Authorization: Bearer {token}`. If Swagger-generated curl lacks the `Authorization` header, restart the API process and refresh Swagger because the running process may be serving stale OpenAPI JSON.
 
 Do NOT add:
-- User aggregate or entities
-- JWT implementation
-- Password hashing
-- DbContext or migrations
-- API endpoints
+- Refresh tokens
 - Roles or permissions
+- Protected Catalog read endpoints
+- Token persistence
 
 Wait for explicit architectural approval before auth business features.
 
@@ -269,8 +307,10 @@ This decision is documented and locked in. Reverting would require an ADR update
 ### Important: No Migrations Without Approval
 
 SQL Server LocalDB uses:
-- Connection string: `(localdb)\mssqllocaldb`
-- One existing migration: `20260608111338_InitialCatalogSchema.cs`
+- Catalog connection string: `ConnectionStrings:Catalog`
+- Auth connection string: `ConnectionStrings:Auth`
+- Catalog migration: `20260608111338_InitialCatalogSchema.cs`
+- Auth migration: `20260609092505_InitialAuthSchema.cs`
 
 Do NOT create migrations or schema changes without explicit approval.
 
@@ -281,6 +321,20 @@ AGENT.md is no longer the full rule set. It is now a router that points to detai
 When AGENT.md changes, always replace the **entire** file. Do not provide or apply partial AGENT.md edits.
 
 When instruction files change, preserve all still-valid rules. If project operating rules change, update project memory.
+
+### Important: Reusable Prompt Template
+
+Short prompts are supported through `docs/project/PROMPT_TEMPLATE.md`.
+
+Examples:
+- `Plan next Catalog feature: Update Product Details`
+- `APPROVED: EXECUTE Execute approved feature: Update Product Details`
+
+Short planning prompts must return every section from the template's Plan Output Contract using exact section names, then internally run the Plan Self-Validation Rule before responding.
+
+Short prompts do not override the execution lock, prompt logging, Clean Architecture, DDD, CQRS, module isolation, testing, security, or completion rules.
+
+Historical prompt logs under `docs/prompts/` must not be rewritten for style cleanup.
 
 ### Important: No Bootstrapper or Shared Projects
 
@@ -319,15 +373,16 @@ dotnet test Ecommerce.sln
 
 # Expected output:
 # - Build: success
-# - Catalog Unit Tests: 47 passed
-# - Architecture Tests: 11 passed
-# - Auth Unit Tests: 0 (skeleton, no tests yet)
+# - Catalog Unit Tests: 61 passed
+# - Architecture Tests: 24 passed
+# - Auth Unit Tests: 65 passed
 ```
 
 If build or tests fail, check:
 1. SQL Server LocalDB is running: `sqllocaldb start mssqllocaldb`
 2. Connection string in `src/Api/Ecommerce.Api/appsettings.json` points to `(localdb)\mssqllocaldb`
-3. Latest migration applied: `dotnet ef database update --project src/Modules/Catalog/Ecommerce.Catalog.Infrastructure`
+3. Latest Catalog migration applied: `dotnet ef database update --project src/Modules/Catalog/Ecommerce.Catalog.Infrastructure`
+4. Latest Auth migration applied: `dotnet ef database update --project src/Modules/Auth/Ecommerce.Auth.Infrastructure --startup-project src/Api/Ecommerce.Api --context AuthDbContext`
 
 ---
 
@@ -337,7 +392,9 @@ If build or tests fail, check:
 |-------|----------|
 | Architecture Strategy | `instructions/00-role-and-stack.md#current-architecture-strategy` |
 | Execution Lock | `instructions/01-execution-and-planning.md#execution-lock` |
+| Reusable Prompt Template | `docs/project/PROMPT_TEMPLATE.md` |
 | CQRS Rules | `instructions/03-cqrs-database-testing-security.md#cqrs-rules` |
+| DDD Ownership Rules | `instructions/03-cqrs-database-testing-security.md#ddd-ownership-rules` |
 | Module Isolation | `instructions/02-architecture-and-modules.md#module-rules` |
 | Project Memory | `instructions/04-documentation-and-memory.md#ai-project-memory-rule` |
 | Product Search Decision | `docs/decisions/ADR-001-product-search-read-model.md` |

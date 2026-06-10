@@ -13,6 +13,12 @@ Read and follow these instruction files in order:
 
 The instruction files preserve the full V2 rule set.
 
+Reusable prompt workflow:
+
+* `docs/project/PROMPT_TEMPLATE.md`
+
+Short prompts such as "Plan next Catalog feature: Update Product Details" or "Execute approved feature: Update Product Details" must be expanded using the reusable prompt template, instruction files, and project memory.
+
 Stable rule references:
 
 * `instructions/00-role-and-stack.md#role`

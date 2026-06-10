@@ -34,7 +34,7 @@ Without approval:
 
 # PLANNING RULES
 
-Planning responses must contain:
+Planning responses must contain, at minimum:
 
 1. Architecture Overview
 2. Design Overview
@@ -47,3 +47,27 @@ Planning responses must contain:
 Every plan must end with:
 
 PLAN_STATUS: PENDING_APPROVAL
+
+For short planning prompts such as "Plan next Catalog feature: Update Product Details", the expanded response must follow the full Plan Output Contract in `docs/project/PROMPT_TEMPLATE.md`.
+
+---
+
+# SHORT PROMPT RULES
+
+Short planning prompts such as "Plan next Catalog feature: Update Product Details" must be expanded using:
+
+* `AGENT.md`
+* `instructions/*`
+* `docs/project/PROMPT_TEMPLATE.md`
+* current project memory under `docs/project/`
+* relevant recent prompt logs and ADRs
+
+Short planning prompts must return every required section from `docs/project/PROMPT_TEMPLATE.md#required-plan-output` using the exact section names and must perform the template's Plan Self-Validation Rule before responding.
+
+Short execution prompts such as "Execute approved feature: Update Product Details" are not valid execution approval unless they include the explicit approval phrase:
+
+APPROVED: EXECUTE
+
+The execution lock remains mandatory for all file creation, file modification, code generation, command execution, scaffolding, migrations, and project changes.
+
+Short prompts do not override architecture, DDD, CQRS, module isolation, documentation, prompt logging, testing, security, or completion rules.

@@ -1,3 +1,5 @@
+using Ecommerce.Auth.Application.Users.LoginUser;
+using Ecommerce.Auth.Application.Users.RegisterUser;
 using Ecommerce.Catalog.Application.Products.CreateProduct;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +26,30 @@ public sealed class ExceptionHandlingMiddleware(
                 context,
                 StatusCodes.Status409Conflict,
                 "Conflict.",
+                exception.Message);
+        }
+        catch (DuplicateEmailException exception)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status409Conflict,
+                "Conflict.",
+                exception.Message);
+        }
+        catch (InvalidCredentialsException exception)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status401Unauthorized,
+                "Unauthorized.",
+                exception.Message);
+        }
+        catch (InactiveUserException exception)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status403Forbidden,
+                "Forbidden.",
                 exception.Message);
         }
         catch (KeyNotFoundException)

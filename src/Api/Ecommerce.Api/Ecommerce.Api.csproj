@@ -1,12 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Auth\Ecommerce.Auth.Application\Ecommerce.Auth.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Auth\Ecommerce.Auth.Contracts\Ecommerce.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Auth\Ecommerce.Auth.Infrastructure\Ecommerce.Auth.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Catalog\Ecommerce.Catalog.Application\Ecommerce.Catalog.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Catalog\Ecommerce.Catalog.Contracts\Ecommerce.Catalog.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Catalog\Ecommerce.Catalog.Infrastructure\Ecommerce.Catalog.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.16" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.16">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
