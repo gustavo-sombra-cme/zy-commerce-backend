@@ -10,9 +10,28 @@ public sealed class CreateProductCommandValidatorTests
     [Fact]
     public void Validate_WithValidCommand_Succeeds()
     {
-        var result = _validator.Validate(new CreateProductCommand("SKU-001", "Test Product", "Description"));
+        var result = _validator.Validate(new CreateProductCommand("SKU-001", "Test Product", "Description", 12.34m));
 
         Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(12.34)]
+    public void Validate_WithNonNegativePrice_Succeeds(decimal price)
+    {
+        var result = _validator.Validate(new CreateProductCommand("SKU-001", "Test Product", null, price));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_WithNegativePrice_Fails()
+    {
+        var result = _validator.Validate(new CreateProductCommand("SKU-001", "Test Product", null, -0.01m));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateProductCommand.Price));
     }
 
     [Theory]
@@ -23,7 +42,7 @@ public sealed class CreateProductCommandValidatorTests
     [InlineData("SKU.001")]
     public void Validate_WithInvalidSku_Fails(string sku)
     {
-        var result = _validator.Validate(new CreateProductCommand(sku, "Test Product", null));
+        var result = _validator.Validate(new CreateProductCommand(sku, "Test Product", null, 12.34m));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateProductCommand.Sku));
@@ -35,7 +54,8 @@ public sealed class CreateProductCommandValidatorTests
         var result = _validator.Validate(new CreateProductCommand(
             new string('A', Sku.MaxLength + 1),
             "Test Product",
-            null));
+            null,
+            12.34m));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateProductCommand.Sku));
@@ -46,7 +66,7 @@ public sealed class CreateProductCommandValidatorTests
     [InlineData("   ")]
     public void Validate_WithInvalidName_Fails(string name)
     {
-        var result = _validator.Validate(new CreateProductCommand("SKU-001", name, null));
+        var result = _validator.Validate(new CreateProductCommand("SKU-001", name, null, 12.34m));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateProductCommand.Name));
@@ -58,7 +78,8 @@ public sealed class CreateProductCommandValidatorTests
         var result = _validator.Validate(new CreateProductCommand(
             "SKU-001",
             new string('A', ProductName.MaxLength + 1),
-            null));
+            null,
+            12.34m));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateProductCommand.Name));
@@ -70,7 +91,8 @@ public sealed class CreateProductCommandValidatorTests
         var result = _validator.Validate(new CreateProductCommand(
             "SKU-001",
             "Test Product",
-            new string('A', Product.DescriptionMaxLength + 1)));
+            new string('A', Product.DescriptionMaxLength + 1),
+            12.34m));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateProductCommand.Description));

@@ -8,12 +8,13 @@ public sealed class Product
     {
     }
 
-    private Product(ProductId id, Sku sku, ProductName name, string? description, DateTimeOffset createdAt)
+    private Product(ProductId id, Sku sku, ProductName name, string? description, decimal price, DateTimeOffset createdAt)
     {
         Id = id;
         Sku = sku;
         Name = name;
         Description = NormalizeDescription(description);
+        Price = NormalizePrice(price);
         IsActive = true;
         CreatedAt = createdAt;
     }
@@ -26,14 +27,24 @@ public sealed class Product
 
     public string? Description { get; private set; }
 
+    public decimal Price { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
 
     public DateTimeOffset? UpdatedAt { get; private set; }
 
+    public static Product Create(
+        Sku sku,
+        ProductName name,
+        string? description,
+        decimal price,
+        DateTimeOffset createdAt) =>
+        new(ProductId.New(), sku, name, description, price, createdAt);
+
     public static Product Create(Sku sku, ProductName name, string? description, DateTimeOffset createdAt) =>
-        new(ProductId.New(), sku, name, description, createdAt);
+        Create(sku, name, description, 0, createdAt);
 
     public void Deactivate(DateTimeOffset updatedAt)
     {
@@ -48,6 +59,22 @@ public sealed class Product
         }
 
         IsActive = false;
+        UpdatedAt = updatedAt;
+    }
+
+    public void Reactivate(DateTimeOffset updatedAt)
+    {
+        if (IsActive)
+        {
+            return;
+        }
+
+        if (updatedAt == default)
+        {
+            throw new ArgumentException("Updated timestamp is required.", nameof(updatedAt));
+        }
+
+        IsActive = true;
         UpdatedAt = updatedAt;
     }
 
@@ -78,5 +105,15 @@ public sealed class Product
         }
 
         return trimmed;
+    }
+
+    private static decimal NormalizePrice(decimal price)
+    {
+        if (price < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
+        }
+
+        return decimal.Round(price, 2, MidpointRounding.AwayFromZero);
     }
 }

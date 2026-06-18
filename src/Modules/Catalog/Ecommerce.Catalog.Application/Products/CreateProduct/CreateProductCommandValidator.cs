@@ -19,6 +19,9 @@ public sealed class CreateProductCommandValidator : AbstractValidator<CreateProd
 
         RuleFor(command => command.Description)
             .MaximumLength(Product.DescriptionMaxLength);
+
+        RuleFor(command => command.Price)
+            .GreaterThanOrEqualTo(0);
     }
 
     private static bool BeValidSku(string sku)

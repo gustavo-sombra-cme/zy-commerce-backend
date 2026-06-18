@@ -34,6 +34,11 @@ public sealed class CatalogReadDbContext(DbContextOptions<CatalogReadDbContext> 
                 .HasColumnName("Description")
                 .HasMaxLength(Product.DescriptionMaxLength);
 
+            builder.Property(product => product.Price)
+                .HasColumnName("Price")
+                .HasPrecision(18, 2)
+                .IsRequired();
+
             builder.Property(product => product.IsActive)
                 .HasColumnName("IsActive")
                 .IsRequired();

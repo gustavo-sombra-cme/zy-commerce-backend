@@ -18,10 +18,18 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (ValidationException exception)
         {
+            logger.LogInformation(
+                "Validation failed for {RequestMethod} {RequestPath} with {ValidationErrorCount} validation errors.",
+                context.Request.Method,
+                context.Request.Path.Value,
+                exception.Errors.Count());
+
             await WriteValidationProblemAsync(context, exception);
         }
         catch (DuplicateSkuException exception)
         {
+            LogHandledException(context, exception, StatusCodes.Status409Conflict, LogLevel.Warning);
+
             await WriteProblemAsync(
                 context,
                 StatusCodes.Status409Conflict,
@@ -30,6 +38,8 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (DuplicateEmailException exception)
         {
+            LogHandledException(context, exception, StatusCodes.Status409Conflict, LogLevel.Warning);
+
             await WriteProblemAsync(
                 context,
                 StatusCodes.Status409Conflict,
@@ -38,6 +48,8 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (InvalidCredentialsException exception)
         {
+            LogHandledException(context, exception, StatusCodes.Status401Unauthorized, LogLevel.Warning);
+
             await WriteProblemAsync(
                 context,
                 StatusCodes.Status401Unauthorized,
@@ -46,14 +58,18 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (InactiveUserException exception)
         {
+            LogHandledException(context, exception, StatusCodes.Status403Forbidden, LogLevel.Warning);
+
             await WriteProblemAsync(
                 context,
                 StatusCodes.Status403Forbidden,
                 "Forbidden.",
                 exception.Message);
         }
-        catch (KeyNotFoundException)
+        catch (KeyNotFoundException exception)
         {
+            LogHandledException(context, exception, StatusCodes.Status404NotFound, LogLevel.Information);
+
             await WriteProblemAsync(
                 context,
                 StatusCodes.Status404NotFound,
@@ -61,7 +77,12 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Unhandled API exception.");
+            logger.LogError(
+                exception,
+                "Unhandled API exception {ExceptionType} for {RequestMethod} {RequestPath}.",
+                exception.GetType().Name,
+                context.Request.Method,
+                context.Request.Path.Value);
 
             await WriteProblemAsync(
                 context,
@@ -121,5 +142,20 @@ public sealed class ExceptionHandlingMiddleware(
         context.Response.ContentType = "application/problem+json";
 
         await context.Response.WriteAsJsonAsync(problemDetails);
+    }
+
+    private void LogHandledException(
+        HttpContext context,
+        Exception exception,
+        int statusCode,
+        LogLevel logLevel)
+    {
+        logger.Log(
+            logLevel,
+            "Handled API exception {ExceptionType} for {RequestMethod} {RequestPath} returned {StatusCode}.",
+            exception.GetType().Name,
+            context.Request.Method,
+            context.Request.Path.Value,
+            statusCode);
     }
 }

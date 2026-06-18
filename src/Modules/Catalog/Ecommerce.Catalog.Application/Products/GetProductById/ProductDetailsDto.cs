@@ -7,4 +7,7 @@ public sealed record ProductDetailsDto(
     string? Description,
     bool IsActive,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt)
+{
+    public decimal Price { get; init; }
+}

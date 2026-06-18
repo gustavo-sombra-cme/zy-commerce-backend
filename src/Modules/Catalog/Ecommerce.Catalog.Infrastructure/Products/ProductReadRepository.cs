@@ -26,7 +26,10 @@ public sealed class ProductReadRepository(
                 product.Description,
                 product.IsActive,
                 product.CreatedAt,
-                product.UpdatedAt))
+                product.UpdatedAt)
+            {
+                Price = product.Price
+            })
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -65,7 +68,10 @@ public sealed class ProductReadRepository(
                 EF.Property<string>(product, nameof(ProductSearchReadModel.Name)),
                 product.Description,
                 product.IsActive,
-                product.CreatedAt))
+                product.CreatedAt)
+            {
+                Price = product.Price
+            })
             .ToArrayAsync(cancellationToken);
 
         return new PagedResult<ProductListItemDto>(items, pageNumber, pageSize, totalCount);

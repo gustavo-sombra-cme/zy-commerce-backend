@@ -18,13 +18,17 @@ public sealed class GetProductByIdQueryHandlerTests
             "Description",
             true,
             DateTimeOffset.UtcNow,
-            null);
+            null)
+        {
+            Price = 12.34m
+        };
         var repository = new FakeProductReadRepository(expected);
         var handler = new GetProductByIdQueryHandler(repository);
 
         var result = await handler.Handle(new GetProductByIdQuery(productId), CancellationToken.None);
 
         Assert.Equal(expected, result);
+        Assert.Equal(12.34m, result?.Price);
         Assert.Equal(productId, repository.RequestedProductId);
     }
 

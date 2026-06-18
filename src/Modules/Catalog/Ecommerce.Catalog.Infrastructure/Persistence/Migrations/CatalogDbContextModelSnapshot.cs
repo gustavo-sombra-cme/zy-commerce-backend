@@ -43,6 +43,10 @@ namespace Ecommerce.Catalog.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Sku")
                         .IsRequired()
                         .HasMaxLength(64)

@@ -6,4 +6,7 @@ public sealed record ProductListItemDto(
     string Name,
     string? Description,
     bool IsActive,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt)
+{
+    public decimal Price { get; init; }
+}

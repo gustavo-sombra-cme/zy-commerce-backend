@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-Date: 2026-06-09
+Date: 2026-06-18
 
 The repository is a .NET 9 ASP.NET Core backend for an enterprise e-commerce system. It follows Clean Architecture First, Modular Monolith, Module Isolation, CQRS, and thin controller rules.
 
@@ -15,6 +15,7 @@ Agent operating rules are split between a short `AGENT.md` router and detailed f
 - `docs/project/ROADMAP.md` - Completed and candidate work
 - `docs/project/NEXT_SESSION.md` - Fast resume guide (< 5 minutes to read)
 - `docs/project/PROMPT_TEMPLATE.md` - Reusable planning and execution prompt defaults for shorter future prompts
+- `docs/project/FRONTEND_CONTRACT.md` - Frontend-facing API contract notes
 
 ## Solution Structure
 
@@ -32,23 +33,30 @@ Current approved projects:
 - `src/Modules/Auth/Ecommerce.Auth.Application`
 - `src/Modules/Auth/Ecommerce.Auth.Infrastructure`
 - `src/Modules/Auth/Ecommerce.Auth.Contracts`
+- `src/Modules/Orders/Ecommerce.Orders.Domain`
+- `src/Modules/Orders/Ecommerce.Orders.Application`
+- `src/Modules/Orders/Ecommerce.Orders.Infrastructure`
+- `src/Modules/Orders/Ecommerce.Orders.Contracts`
 - `tests/ArchitectureTests/Ecommerce.ArchitectureTests`
 - `tests/UnitTests/Ecommerce.Catalog.UnitTests`
 - `tests/UnitTests/Ecommerce.Auth.UnitTests`
+- `tests/UnitTests/Ecommerce.Orders.UnitTests`
 
 ## Active Modules
 
 ### Catalog
 
-Catalog is the only module with business behavior.
+Catalog contains product business behavior.
 
 Implemented product capabilities:
 
 - Create Product
+- Create Product with Catalog-owned price
 - Get Product By Id
 - Search/List Products with pagination
 - Update Product Details
 - Deactivate Product
+- Reactivate Product
 
 Catalog uses:
 
@@ -59,6 +67,7 @@ Catalog uses:
 - EF Core persistence
 - SQL Server LocalDB
 - Manual EF Core migration: `InitialCatalogSchema`
+- Manual EF Core migration: `AddProductPrice`
 - Query-side read model for product search
 
 ### Auth
@@ -148,6 +157,50 @@ Auth intentionally does not contain:
 - roles or permissions
 - token persistence
 
+### Orders
+
+Orders has Create Order, List Orders For Current User, and Get Order By Id implemented through Domain, Application, Infrastructure, Contracts, UnitTests, and API.
+
+Current Orders projects:
+
+- `Ecommerce.Orders.Domain`
+- `Ecommerce.Orders.Application`
+- `Ecommerce.Orders.Infrastructure`
+- `Ecommerce.Orders.Contracts`
+- `Ecommerce.Orders.UnitTests`
+
+Implemented Orders domain model:
+
+- `Order` aggregate
+- `OrderLine` child entity
+- `OrderId` value object
+- `OrderLineId` value object
+- `BuyerId` value object
+- `OrderStatus`
+
+Implemented Orders behavior:
+
+- Create order
+- Capture product snapshot data from the create request
+- Calculate order totals from lines
+- List order summaries for the authenticated buyer with pagination, newest first
+- Get order by id for the authenticated owner only
+
+Orders intentionally does not contain:
+
+- payments
+- inventory reservation
+- shipping
+- discounts
+- coupons
+- cancellation
+- refunds
+- advanced order status workflows
+- Customer profile integration
+- Catalog internal references
+- Auth internal references
+- MCP adapter code inside the Orders module
+
 ## API Status
 
 Catalog endpoints are implemented through controllers under:
@@ -161,6 +214,7 @@ Current product routes:
 - `GET /api/catalog/products`
 - `PUT /api/catalog/products/{productId}` - protected, requires valid bearer token
 - `DELETE /api/catalog/products/{productId}` - protected, requires valid bearer token
+- `POST /api/catalog/products/{productId}/reactivate` - protected, requires valid bearer token
 
 Current Auth routes:
 
@@ -168,26 +222,71 @@ Current Auth routes:
 - `POST /api/auth/users/login`
 - `GET /api/auth/users/me`
 
+Current Orders routes:
+
+- `POST /api/orders` - protected, requires valid bearer token
+- `GET /api/orders` - protected, requires valid bearer token, returns only the authenticated user's order summaries, sorted newest first, with pagination defaults `pageNumber=1` and `pageSize=20`
+- `GET /api/orders/{orderId}` - protected, requires valid bearer token and returns only the authenticated user's order
+
+Current platform health routes:
+
+- `GET /health/live` - process liveness only; does not depend on database connectivity
+- `GET /health/ready` - readiness for Auth, Catalog, and Orders database connectivity
+
+Health readiness checks use the existing Auth, Catalog, and Orders EF Core DbContexts with `Database.CanConnectAsync`. They do not create databases, apply migrations, or change schema.
+
+Current platform logging behavior:
+
+- Uses built-in ASP.NET Core logging only.
+- Supports `X-Correlation-ID` on requests.
+- Preserves incoming `X-Correlation-ID` values when supplied.
+- Returns `X-Correlation-ID` on every response.
+- Adds structured request, exception, health readiness failure, and JWT authentication failure/challenge logging.
+- Does not log tokens, authorization headers, passwords, request bodies, or response bodies.
+
+Current platform MCP behavior:
+
+- Uses the official `ModelContextProtocol.AspNetCore` package in `Ecommerce.Api`.
+- Hosts protected `POST /mcp` as a stateless Streamable HTTP MCP endpoint.
+- Implements MCP as an API-layer adapter under `src/Api/Ecommerce.Api/Mcp`.
+- MCP tools call existing Application/CQRS requests through `ISender`.
+- MCP adapter code does not call EF Core DbContexts, repositories, Domain objects, or module internals directly.
+- Approved initial MCP tool allowlist:
+  - `catalog_search_products`
+  - `catalog_get_product_by_id`
+  - `orders_get_order_by_id`
+  - `orders_create_order`
+- `orders_create_order` requires explicit `confirmedByUser` input before dispatching the create command.
+- Orders MCP reads are scoped to the authenticated user id from the JWT `sub` claim.
+- MCP does not expose Auth register/login, JWTs, passwords, authorization headers, raw database access, migrations, health readiness details, appsettings, environment variables, SQL, Catalog writes, cross-user orders, or non-existent Orders features.
+
 Swagger/OpenAPI is enabled for local Development only. Swagger uses the standard HTTP bearer security scheme and includes an Authorize button. Protected operations are marked with per-operation security metadata from `[Authorize]`, while public endpoints remain public. In Swagger Authorize, enter the raw JWT access token only; Swagger UI sends `Authorization: Bearer {token}`. Swagger UI persists authorization across browser refreshes.
 
 ## Database Status
 
-Catalog has EF Core persistence and one approved migration:
+Catalog has EF Core persistence and two approved migrations:
 
 - `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260608111338_InitialCatalogSchema.cs`
+- `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260618090000_AddProductPrice.cs`
 
 Auth has EF Core persistence and one approved migration:
 
 - `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Persistence/Migrations/20260609092505_InitialAuthSchema.cs`
 
+Orders has EF Core persistence and one approved migration:
+
+- `src/Modules/Orders/Ecommerce.Orders.Infrastructure/Persistence/Migrations/20260612090403_InitialOrdersSchema.cs`
+
 Local development uses:
 
 - `ConnectionStrings:Catalog`
 - `ConnectionStrings:Auth`
+- `ConnectionStrings:Orders`
 - SQL Server LocalDB
 - `(localdb)\mssqllocaldb`
 
 The Auth LocalDB database `EcommerceAuth` has been updated through `InitialAuthSchema`.
+The Orders LocalDB database `EcommerceOrders` has been created and updated through `InitialOrdersSchema`.
 
 ## Error Handling
 
@@ -210,12 +309,16 @@ Architecture tests enforce:
 - Domain projects do not reference Application, Infrastructure, Contracts, or Api.
 - Application projects do not reference Infrastructure or Api.
 - Infrastructure projects do not reference Api.
-- BuildingBlocks projects do not reference Catalog or Auth.
-- Catalog and Auth do not reference each other.
+- BuildingBlocks projects do not reference Catalog, Auth, or Orders.
+- Catalog, Auth, and Orders do not reference each other.
 - Catalog write endpoints require authorization.
 - Catalog read endpoints remain public.
 - Auth register and login remain public.
 - Auth current-user endpoint remains protected.
+- Orders endpoints require authorization.
+- MCP `/mcp` endpoint requires authorization.
+- MCP exposes only the approved tool allowlist.
+- MCP adapter types must not depend on EF Core, repositories, Domain projects, or module persistence internals.
 - Only approved projects exist.
 - Only approved modules exist.
 - No Bootstrapper or Shared projects exist.
@@ -259,6 +362,128 @@ Latest documentation-only execution after Prompt Template Compliance Contract En
 - Restore, build, and test were intentionally not run.
 - Documentation self-review was performed.
 
+Latest code execution after Catalog Reactivate Product:
+
+- `Product.Reactivate` implements an idempotent inactive-to-active lifecycle transition.
+- Reactivating an already active product returns success without changing state or updating `UpdatedAt`.
+- `POST /api/catalog/products/{productId}/reactivate` is protected and returns `204 No Content` on success.
+- No package, migration, schema, Auth behavior, or cross-module changes were created.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 70 passed
+- Architecture tests: 26 passed
+- Auth unit tests: 65 passed
+- Manual API smoke verification was attempted but could not complete because the local SQL Server LocalDB runtime was unavailable in this environment.
+
+Latest code execution after Platform Health Checks:
+
+- `GET /health/live` was added for process liveness only.
+- `GET /health/ready` was added for Auth and Catalog database readiness.
+- Readiness uses EF Core `Database.CanConnectAsync` and does not create databases, apply migrations, or change schema.
+- No package, migration, schema, Domain, Application, CQRS, Auth behavior, Catalog behavior, or module behavior changes were created.
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln --no-build`: passed
+- Catalog unit tests: 70 passed
+- Architecture tests: 26 passed
+- Auth unit tests: 65 passed
+
+Latest documentation-only execution after Health Checks Documentation Finalization:
+
+- Prompt logs and project memory docs were updated for Platform Health Checks.
+- No code or project structure changed.
+- Build and test were intentionally not run.
+
+Latest code execution after Platform Structured Logging:
+
+- Added `X-Correlation-ID` support and returns the header on every response.
+- Preserves incoming `X-Correlation-ID` values when supplied.
+- Added built-in ASP.NET Core structured request logging.
+- Added structured exception logging without logging handled exception details that may contain user input.
+- Added health readiness failure logging.
+- Added JWT authentication failure and challenge logging without logging tokens or authorization headers.
+- Does not log tokens, authorization headers, passwords, request bodies, or response bodies.
+- No package, migration, schema, Domain, Application, CQRS, module, or business behavior changes were created.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 70 passed
+- Architecture tests: 30 passed
+- Auth unit tests: 65 passed
+
+Latest code execution after Orders Initial Vertical Slice:
+
+- Added the Orders module with Domain, Application, Infrastructure, Contracts, and UnitTests projects.
+- Added `Order` aggregate, `OrderLine`, `OrderId`, `OrderLineId`, `BuyerId`, and `OrderStatus`.
+- Added Create Order and Get Order By Id CQRS flows.
+- Create Order captures product snapshot data from the request.
+- Get Order By Id is scoped to the authenticated buyer id.
+- Added protected `POST /api/orders` and `GET /api/orders/{orderId}` endpoints.
+- Added ADR-002 for Orders product snapshot strategy.
+- Added initial Orders EF Core migration `InitialOrdersSchema`.
+- Created and updated the local `EcommerceOrders` database through `InitialOrdersSchema`.
+- No Catalog or Auth internal references were added.
+- No payments, inventory, shipping, discounts, coupons, refunds, cancellation, advanced order workflows, Customer profile module, or MCP integration were added.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 70 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 12 passed
+- Architecture tests: 33 passed
+- Manual API smoke verification passed for unauthorized create, authenticated create, same-user get, cross-user get returning `404 NotFound`, and correlation header preservation.
+
+Latest code execution after MCP Server Integration:
+
+- Added the official `ModelContextProtocol.AspNetCore` package to `Ecommerce.Api`.
+- Added a protected `/mcp` stateless Streamable HTTP endpoint.
+- Added API-layer MCP tools under `src/Api/Ecommerce.Api/Mcp`.
+- MCP tools dispatch existing Catalog and Orders CQRS requests through `ISender`.
+- Added approved MCP tools only: `catalog_search_products`, `catalog_get_product_by_id`, `orders_get_order_by_id`, and `orders_create_order`.
+- `orders_create_order` requires explicit `confirmedByUser` input and has test coverage.
+- Added ADR-003 for MCP boundary and security.
+- No Domain, Application, Infrastructure module, CQRS, database schema, migration, Auth behavior, Catalog behavior, or Orders behavior changes were created.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 70 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 12 passed
+- Architecture tests: 43 passed
+
+Latest code execution after Orders List For Current User:
+
+- Added query-side CQRS list flow for authenticated buyer order summaries.
+- Added protected `GET /api/orders` endpoint with `pageNumber` and `pageSize` query parameters.
+- Defaults are `pageNumber=1` and `pageSize=20`; `pageSize` is limited to `100`.
+- List results are scoped to the JWT `sub` claim, sorted by `CreatedAt` descending, and return summary fields only: `orderId`, `status`, `totalAmount`, `createdAt`, and `lineCount`.
+- Full order lines remain available only through `GET /api/orders/{orderId}`.
+- Added frontend contract documentation in `docs/project/FRONTEND_CONTRACT.md`.
+- No migrations, schema changes, commands, domain behavior, MCP changes, packages, Auth changes, or Catalog changes were created.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln --no-restore`: passed
+- `dotnet test Ecommerce.sln --no-build`: passed
+- Catalog unit tests: 70 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 23 passed
+- Architecture tests: 48 passed
+
+Latest code execution after Catalog Product Price Write Support:
+
+- Added `Price` to the Catalog `Product` aggregate.
+- `POST /api/catalog/products` now accepts non-negative `price` and stores it with `decimal(18,2)` precision.
+- `GET /api/catalog/products` and `GET /api/catalog/products/{productId}` return `price`.
+- Added Catalog migration `AddProductPrice`, defaulting existing rows to `0.00`.
+- Updated Catalog tests and frontend contract documentation.
+- No price update endpoint, price history/audit, currency support, discounts, coupons, MCP changes, Auth changes, Orders behavior changes, packages, or new modules were created.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 75 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 23 passed
+- Architecture tests: 48 passed
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:
@@ -271,6 +496,7 @@ The repository intentionally does not currently include:
 - startup auto-migrations
 - Docker setup
 - Customers module
-- Orders module
 - Inventory module
+- payments, inventory reservation, shipping, discounts, coupons, order cancellation, refunds, advanced order status workflows, and Customer profile integration
 - Auth refresh token, roles, permissions, protected Catalog read endpoint, or token persistence features
+- MCP tools beyond the approved initial allowlist

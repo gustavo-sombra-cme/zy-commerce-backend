@@ -58,6 +58,9 @@ public sealed class SearchProductsQueryHandlerTests
                     "Description",
                     true,
                     DateTimeOffset.UtcNow)
+                {
+                    Price = 12.34m
+                }
             },
             1,
             20,
@@ -68,6 +71,7 @@ public sealed class SearchProductsQueryHandlerTests
         var result = await handler.Handle(new SearchProductsQuery(null, null, 1, 20), CancellationToken.None);
 
         Assert.Equal(expected, result);
+        Assert.Equal(12.34m, Assert.Single(result.Items).Price);
     }
 
     private sealed class FakeProductReadRepository(PagedResult<ProductListItemDto>? result = null)

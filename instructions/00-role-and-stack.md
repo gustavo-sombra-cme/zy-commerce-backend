@@ -98,17 +98,18 @@ Currently approved:
 
 * Catalog
 * Auth
+* Orders
 
 Current module status:
 
 * Catalog contains business features.
-* Auth is a skeleton only until explicitly approved for business features.
+* Auth contains registration, login, JWT access token, bearer validation, and current-user behavior.
+* Orders contains the initial Create Order and Get Order By Id vertical slice.
 
 Future modules may include:
 
 * Inventory
 * Customers
-* Orders
 * Payments
 * Shipping
 * Promotions

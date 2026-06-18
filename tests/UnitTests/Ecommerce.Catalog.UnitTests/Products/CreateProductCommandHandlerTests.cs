@@ -15,13 +15,14 @@ public sealed class CreateProductCommandHandlerTests
         var handler = new CreateProductCommandHandler(repository, unitOfWork);
 
         var result = await handler.Handle(
-            new CreateProductCommand("SKU-001", "Test Product", "Description"),
+            new CreateProductCommand("SKU-001", "Test Product", "Description", 12.34m),
             CancellationToken.None);
 
         Assert.NotEqual(Guid.Empty, result.ProductId);
         Assert.Equal("SKU-001", result.Sku);
         Assert.Equal("Test Product", result.Name);
-        Assert.Single(repository.Products);
+        var product = Assert.Single(repository.Products);
+        Assert.Equal(12.34m, product.Price);
         Assert.True(unitOfWork.SaveChangesCalled);
     }
 
@@ -33,7 +34,7 @@ public sealed class CreateProductCommandHandlerTests
         var handler = new CreateProductCommandHandler(repository, unitOfWork);
 
         await Assert.ThrowsAsync<DuplicateSkuException>(() => handler.Handle(
-            new CreateProductCommand("SKU-001", "Test Product", null),
+            new CreateProductCommand("SKU-001", "Test Product", null, 12.34m),
             CancellationToken.None));
 
         Assert.Empty(repository.Products);

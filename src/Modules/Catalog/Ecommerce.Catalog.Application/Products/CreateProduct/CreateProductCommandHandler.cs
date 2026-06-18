@@ -19,7 +19,7 @@ public sealed class CreateProductCommandHandler(
         }
 
         var name = ProductName.Create(request.Name);
-        var product = Product.Create(sku, name, request.Description, DateTimeOffset.UtcNow);
+        var product = Product.Create(sku, name, request.Description, request.Price, DateTimeOffset.UtcNow);
 
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

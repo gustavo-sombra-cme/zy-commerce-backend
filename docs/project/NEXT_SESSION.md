@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-06-09
+**Last Updated:** 2026-06-18
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -18,6 +18,14 @@ This file is designed to allow a future AI session to resume project work in les
 - Auth JWT bearer validation and protected Current User endpoint (`GET /api/auth/users/me`)
 - Swagger JWT authorization and protected Catalog write endpoints
 - Catalog Update Product Details (`PUT /api/catalog/products/{productId}`)
+- Catalog Product Price Write Support (`price` on create/search/details)
+- Catalog Reactivate Product (`POST /api/catalog/products/{productId}/reactivate`)
+- Platform Health Checks (`GET /health/live`, `GET /health/ready`)
+- Health Checks Documentation Finalization
+- Platform Structured Logging (`X-Correlation-ID`, request/error/health/auth logging)
+- Orders Initial Vertical Slice (`POST /api/orders`, `GET /api/orders/{orderId}`)
+- Orders List For Current User (`GET /api/orders`)
+- MCP Server Integration (`POST /mcp`, protected allowlisted MCP tools)
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
 - JWT default authentication scheme fix
@@ -44,31 +52,66 @@ All approved projects exist and build successfully:
 **Modules:**
 - `src/Modules/Catalog/*` (Domain, Application, Infrastructure, Contracts)
 - `src/Modules/Auth/*` (Domain, Application, Infrastructure, Contracts)
+- `src/Modules/Orders/*` (Domain, Application, Infrastructure, Contracts)
 
 **API & Tests:**
 - `src/Api/Ecommerce.Api`
 - `tests/ArchitectureTests/Ecommerce.ArchitectureTests`
 - `tests/UnitTests/Ecommerce.Catalog.UnitTests`
 - `tests/UnitTests/Ecommerce.Auth.UnitTests`
+- `tests/UnitTests/Ecommerce.Orders.UnitTests`
+
+### Platform Health Checks
+
+- `GET /health/live` reports process liveness only and does not depend on database connectivity.
+- `GET /health/ready` reports readiness for Auth, Catalog, and Orders database connectivity.
+- Readiness checks use existing EF Core DbContexts with `Database.CanConnectAsync`.
+- Health checks do not create databases, apply migrations, or change schema.
+
+### Platform Structured Logging
+
+- Uses built-in ASP.NET Core logging only.
+- `X-Correlation-ID` is accepted, preserved when supplied, generated when missing, and returned on every response.
+- Request logging records method, path, status code, and elapsed time.
+- Exception, health readiness failure, and JWT authentication failure/challenge logging are structured.
+- Tokens, authorization headers, passwords, request bodies, and response bodies must not be logged.
+
+### Platform MCP Integration
+
+- Uses `ModelContextProtocol.AspNetCore` in the API project.
+- `POST /mcp` is hosted as a protected stateless Streamable HTTP MCP endpoint.
+- MCP implementation lives under `src/Api/Ecommerce.Api/Mcp`.
+- MCP tools dispatch existing Application/CQRS requests through `ISender`.
+- Approved tool allowlist:
+  - `catalog_search_products`
+  - `catalog_get_product_by_id`
+  - `orders_get_order_by_id`
+  - `orders_create_order`
+- `orders_create_order` requires explicit `confirmedByUser` input.
+- Orders MCP tools use the authenticated JWT `sub` claim for owner context.
+- MCP does not expose Auth register/login, JWTs, passwords, authorization headers, raw database access, migrations, health readiness details, appsettings, environment variables, SQL, Catalog writes, cross-user orders, or non-existent Orders features.
 
 ### Database Status
 
 - **Persistence:** SQL Server LocalDB `(localdb)\mssqllocaldb`
-- **Connection Strings:** `ConnectionStrings:Catalog` and `ConnectionStrings:Auth` in `appsettings.Development.json`
-- **Catalog Migration:** `20260608111338_InitialCatalogSchema.cs`
+- **Connection Strings:** `ConnectionStrings:Catalog`, `ConnectionStrings:Auth`, and `ConnectionStrings:Orders` in `appsettings.Development.json`
+- **Catalog Migrations:** `20260608111338_InitialCatalogSchema.cs`, `20260618090000_AddProductPrice.cs`
 - **Auth Migration:** `20260609092505_InitialAuthSchema.cs`
+- **Orders Migration:** `20260612090403_InitialOrdersSchema.cs`
 - **Auth Persistence:** `EcommerceAuth` LocalDB database updated through `InitialAuthSchema`
+- **Orders Persistence:** `EcommerceOrders` LocalDB database created and updated through `InitialOrdersSchema`
 
 ### Build & Test Status
 
-Last verified pass (2026-06-09):
+Last verified pass (2026-06-18):
 ```
-dotnet restore Ecommerce.sln    ✓ PASSED
-dotnet build Ecommerce.sln       ✓ PASSED
-dotnet test Ecommerce.sln        ✓ PASSED
-  - Catalog Unit Tests: 61 passed
-  - Architecture Tests: 24 passed
+dotnet restore Ecommerce.sln               PASSED
+dotnet build Ecommerce.sln                 PASSED
+dotnet test Ecommerce.sln                  PASSED
+  - Catalog Unit Tests: 75 passed
   - Auth Unit Tests: 65 passed
+  - Orders Unit Tests: 23 passed
+  - Architecture Tests: 48 passed
 ```
 
 ---
@@ -96,7 +139,7 @@ Domain
 Infrastructure → Application → Domain
 
 BuildingBlocks → (must not reference modules)
-Catalog ← ↛ Auth (no cross-module references)
+Catalog/Auth/Orders (no cross-module references)
 ```
 
 ### Module Isolation
@@ -104,7 +147,7 @@ Catalog ← ↛ Auth (no cross-module references)
 - Each module owns: Domain, Application, Infrastructure, Contracts
 - Cross-module communication through Contracts only
 - No internal project references between modules
-- Catalog and Auth must not reference each other
+- Catalog, Auth, and Orders must not reference each other
 
 ### Catalog Module (Complete)
 
@@ -114,13 +157,16 @@ Catalog ← ↛ Auth (no cross-module references)
 - Search/List Products with pagination (GET /api/catalog/products)
 - Update Product Details (PUT /api/catalog/products/{productId}, protected)
 - Deactivate Product (DELETE /api/catalog/products/{productId}, protected)
+- Reactivate Product (POST /api/catalog/products/{productId}/reactivate, protected)
 
 **Key Decisions:**
 - Product search uses infrastructure read model (`ProductSearchReadModel`, `CatalogReadDbContext`)
 - See: `docs/decisions/ADR-001-product-search-read-model.md`
 - Do NOT revert to aggregate value object access inside EF queries
+- Product price is Catalog-owned aggregate state. Create Product accepts non-negative `price`, persists it as `decimal(18,2)`, and search/details responses return it. Update Product Details does not change price.
 - Catalog write endpoints require a valid bearer token.
 - Catalog read endpoints remain public.
+- Product reactivation is idempotent and does not update `UpdatedAt` when the product is already active.
 
 **Entities:**
 - `Product` (aggregate root)
@@ -151,6 +197,39 @@ Catalog ← ↛ Auth (no cross-module references)
 
 Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
+### Orders Module
+
+**Implemented Features:**
+- Create Order (POST /api/orders, protected)
+- List Orders For Current User (GET /api/orders, protected, owner-scoped summaries only)
+- Get Order By Id (GET /api/orders/{orderId}, protected and owner-scoped)
+
+**Key Decisions:**
+- Orders uses product snapshot data supplied in the create request for this slice.
+- See: `docs/decisions/ADR-002-orders-product-snapshot-strategy.md`
+- Orders does not reference Catalog or Auth internals.
+- All Orders endpoints require a valid bearer token.
+- Users may only list or retrieve their own orders.
+- `GET /api/orders` uses `pageNumber` and `pageSize`, defaults to `1` and `20`, limits `pageSize` to `100`, sorts newest first by `CreatedAt`, and returns only `orderId`, `status`, `totalAmount`, `createdAt`, and `lineCount`.
+- Frontend contract notes live in `docs/project/FRONTEND_CONTRACT.md`.
+- Initial order lifecycle is intentionally limited to `Created`.
+
+**Entities:**
+- `Order` (aggregate root)
+- `OrderLine` (child entity with product snapshot data)
+- Value objects: `OrderId`, `OrderLineId`, `BuyerId`
+- Enum: `OrderStatus`
+
+**Intentionally Absent:**
+- Payments
+- Inventory reservation
+- Shipping
+- Discounts/coupons
+- Cancellation/refunds
+- Advanced order status workflows
+- Customer profile integration
+- Additional Orders MCP tools beyond the approved allowlist
+
 ### BuildingBlocks
 
 **Purpose:** Shared abstractions that do not reference any module
@@ -164,7 +243,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 ## Current Phase
 
-**Phase:** Revisit Swagger/API Authentication Integration
+**Phase:** Awaiting Next Approved Task
 
 **Completed Phases:**
 1. Solution skeleton
@@ -190,17 +269,26 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 21. Catalog Update Product Details
 22. Swagger Authentication Integration
 23. Revisit Swagger/API Authentication Integration
+24. Catalog Reactivate Product
+25. Platform Health Checks
+26. Health Checks Documentation Finalization
+27. Platform Structured Logging
+28. Orders Initial Vertical Slice
+29. Orders List For Current User
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
 
 **Next Phases (When Explicitly Approved):**
-- Additional Catalog features (Reactivate Product, product uniqueness hardening, etc.)
+- Additional Catalog features (product uniqueness hardening, etc.)
 - Auth refresh token planning
 - Auth broader protected endpoint authorization planning
+- Orders Catalog validation/integration planning
+- MCP frontend integration planning
+- MCP authorization policy/rate limiting planning
 - Catalog write authorization policy refinement
 - Integration testing setup
-- Platform features (health checks, logging, API versioning, etc.)
+- Platform features (API versioning, configuration validation, etc.)
 
 ---
 
@@ -208,7 +296,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was Revisit Swagger/API Authentication Integration. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Catalog Product Price Write Support. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 **How to Proceed:**
 
@@ -284,7 +372,7 @@ All architecture, planning, execution, testing, and documentation work must be l
 
 ### Important: Auth Has Access Tokens And /me Only
 
-The Auth module can register users through `POST /api/auth/users/register`, verify credentials through `POST /api/auth/users/login`, and return the current authenticated user through `GET /api/auth/users/me`. Login returns a short-lived JWT access token. The `/me` endpoint requires a valid bearer token and returns only `userId` and `email`. Catalog product write endpoints (`POST`, `PUT`, and `DELETE`) require a valid bearer token; Catalog product read endpoints remain public. Swagger has an Authorize button for JWT access tokens; enter the raw JWT access token and Swagger UI sends `Authorization: Bearer {token}`. If Swagger-generated curl lacks the `Authorization` header, restart the API process and refresh Swagger because the running process may be serving stale OpenAPI JSON.
+The Auth module can register users through `POST /api/auth/users/register`, verify credentials through `POST /api/auth/users/login`, and return the current authenticated user through `GET /api/auth/users/me`. Login returns a short-lived JWT access token. The `/me` endpoint requires a valid bearer token and returns only `userId` and `email`. Catalog product write endpoints require a valid bearer token; Catalog product read endpoints remain public. Swagger has an Authorize button for JWT access tokens; enter the raw JWT access token and Swagger UI sends `Authorization: Bearer {token}`. If Swagger-generated curl lacks the `Authorization` header, restart the API process and refresh Swagger because the running process may be serving stale OpenAPI JSON.
 
 Do NOT add:
 - Refresh tokens
@@ -309,10 +397,74 @@ This decision is documented and locked in. Reverting would require an ADR update
 SQL Server LocalDB uses:
 - Catalog connection string: `ConnectionStrings:Catalog`
 - Auth connection string: `ConnectionStrings:Auth`
-- Catalog migration: `20260608111338_InitialCatalogSchema.cs`
+- Orders connection string: `ConnectionStrings:Orders`
+- Catalog migrations: `20260608111338_InitialCatalogSchema.cs`, `20260618090000_AddProductPrice.cs`
 - Auth migration: `20260609092505_InitialAuthSchema.cs`
+- Orders migration: `20260612090403_InitialOrdersSchema.cs`
 
 Do NOT create migrations or schema changes without explicit approval.
+
+### Important: Health Checks Are Platform-Only
+
+Current health endpoints are:
+- `GET /health/live` for process liveness only.
+- `GET /health/ready` for Auth, Catalog, and Orders database readiness.
+
+The live endpoint must not depend on database connectivity. The ready endpoint must not create databases, apply migrations, or change schema.
+
+### Important: Orders Product Snapshot Strategy
+
+Orders stores product snapshot data from the create request for the initial vertical slice.
+
+**See:** `docs/decisions/ADR-002-orders-product-snapshot-strategy.md`
+
+Do NOT add direct Orders references to Catalog or Auth internals. Do NOT add payments, inventory reservation, shipping, discounts, coupons, cancellation, refunds, advanced order status workflows, or Customer profile integration without explicit approval.
+
+`GET /api/orders` must remain owner-scoped to the JWT `sub` claim and must return summaries only. Do not add full order lines to the list response; use `GET /api/orders/{orderId}` for line details.
+
+### Important: MCP Is API-Layer Only
+
+MCP is implemented under `src/Api/Ecommerce.Api/Mcp` and must remain an API/platform adapter.
+
+Current MCP endpoint:
+- `POST /mcp` protected by bearer authentication.
+
+Current tool allowlist:
+- `catalog_search_products`
+- `catalog_get_product_by_id`
+- `orders_get_order_by_id`
+- `orders_create_order`
+
+`orders_create_order` must require explicit `confirmedByUser` input. MCP handlers must call existing Application/CQRS requests through `ISender`. Do NOT call EF Core DbContexts, repositories, Domain objects, or module internals directly from MCP code.
+
+Do NOT expose:
+- Auth register/login
+- JWTs
+- passwords
+- authorization headers
+- raw database access
+- migrations
+- health readiness details
+- appsettings
+- environment variables
+- SQL
+- Catalog writes
+- cross-user orders
+- non-existent Orders features
+- tools beyond the approved allowlist
+
+### Important: Structured Logging Is API/Platform-Only
+
+Current structured logging uses built-in ASP.NET Core logging only. `X-Correlation-ID` must be preserved when supplied and returned on every response.
+
+Do NOT log:
+- tokens
+- authorization headers
+- passwords
+- request bodies
+- response bodies
+
+Do NOT add logging packages, sinks, schema changes, Domain changes, Application changes, CQRS changes, modules, or business behavior changes without explicit approval.
 
 ### Important: AGENT.md is a Router
 
@@ -373,9 +525,10 @@ dotnet test Ecommerce.sln
 
 # Expected output:
 # - Build: success
-# - Catalog Unit Tests: 61 passed
-# - Architecture Tests: 24 passed
+# - Catalog Unit Tests: 75 passed
 # - Auth Unit Tests: 65 passed
+# - Orders Unit Tests: 23 passed
+# - Architecture Tests: 48 passed
 ```
 
 If build or tests fail, check:
@@ -383,6 +536,7 @@ If build or tests fail, check:
 2. Connection string in `src/Api/Ecommerce.Api/appsettings.json` points to `(localdb)\mssqllocaldb`
 3. Latest Catalog migration applied: `dotnet ef database update --project src/Modules/Catalog/Ecommerce.Catalog.Infrastructure`
 4. Latest Auth migration applied: `dotnet ef database update --project src/Modules/Auth/Ecommerce.Auth.Infrastructure --startup-project src/Api/Ecommerce.Api --context AuthDbContext`
+5. Latest Orders migration applied: `dotnet ef database update --project src/Modules/Orders/Ecommerce.Orders.Infrastructure --startup-project src/Api/Ecommerce.Api --context OrdersDbContext`
 
 ---
 
@@ -398,6 +552,9 @@ If build or tests fail, check:
 | Module Isolation | `instructions/02-architecture-and-modules.md#module-rules` |
 | Project Memory | `instructions/04-documentation-and-memory.md#ai-project-memory-rule` |
 | Product Search Decision | `docs/decisions/ADR-001-product-search-read-model.md` |
+| Orders Product Snapshot Decision | `docs/decisions/ADR-002-orders-product-snapshot-strategy.md` |
+| MCP Boundary And Security Decision | `docs/decisions/ADR-003-mcp-server-boundary-and-security.md` |
+| Frontend Contract | `docs/project/FRONTEND_CONTRACT.md` |
 | Recent Prompts | `docs/prompts/` (start with highest numbers) |
 
 ---

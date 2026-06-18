@@ -31,6 +31,15 @@
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
 - JWT default authentication scheme fix
+- Catalog Reactivate Product
+- Catalog Product Price Write Support
+- Platform Health Checks
+- Platform Structured Logging
+- Orders Initial Vertical Slice
+- Orders List For Current User
+- ADR for Orders product snapshot strategy
+- MCP Server Integration
+- ADR for MCP server boundary and security
 - Project memory documentation
 - AGENT.md router and instruction file split
 - Prompt standardization and reusable prompt template setup
@@ -53,15 +62,14 @@
 
 Potential future work:
 
-- Reactivate Product
 - Product uniqueness hardening
 - Integration tests for API and persistence
+- Product price update command/endpoints
 - Authorization policy refinement for Catalog writes
 - Additional read models if query needs grow
 
 Not currently started:
 
-- price
 - inventory
 - category
 - images
@@ -83,14 +91,58 @@ Not currently started:
 - roles or permissions
 - token persistence
 
+## Orders Candidates
+
+Orders currently has Create Order, List Orders For Current User, and Get Order By Id. Orders stores product snapshot data from the create request, scopes reads to the authenticated buyer, and does not reference Catalog or Auth internals.
+
+Potential future phases:
+
+- Catalog validation/integration for product snapshots
+- Inventory reservation
+- Payments
+- Shipping
+- Order cancellation
+- Refunds
+- Advanced order status workflows
+- Customer profile integration
+
+Not currently started:
+
+- payments
+- inventory reservation
+- shipping
+- discounts or coupons
+- cancellation
+- refunds
+- advanced status workflow
+- Customer profile integration
+
+## MCP Candidates
+
+MCP currently exposes a protected API-layer allowlist for Catalog reads and initial Orders tools.
+
+Potential future phases:
+
+- Frontend MCP client integration
+- Dedicated MCP authorization policies or scopes
+- Rate limiting for `/mcp`
+- Catalog snapshot validation before broader order creation usage
+- Additional read-only Catalog tools after explicit approval
+
+Not currently started:
+
+- Auth MCP tools
+- Catalog write MCP tools
+- raw database or SQL MCP tools
+- health readiness MCP tools
+- MCP resources or prompts
+
 ## Platform Candidates
 
 Potential future work:
 
 - Integration testing setup
 - API versioning decision
-- Health checks
-- Structured logging
 - Configuration validation
 - Broader authorization policies after Auth design is approved
 

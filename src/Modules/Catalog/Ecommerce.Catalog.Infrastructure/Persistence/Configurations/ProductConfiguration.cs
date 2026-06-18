@@ -40,6 +40,10 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.Description)
             .HasMaxLength(Product.DescriptionMaxLength);
 
+        builder.Property(product => product.Price)
+            .HasPrecision(18, 2)
+            .IsRequired();
+
         builder.Property(product => product.IsActive)
             .IsRequired();
 

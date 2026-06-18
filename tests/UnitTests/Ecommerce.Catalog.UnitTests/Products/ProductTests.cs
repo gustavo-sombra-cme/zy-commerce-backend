@@ -13,12 +13,14 @@ public sealed class ProductTests
             Sku.Create("SKU-001"),
             ProductName.Create("Test Product"),
             "Test description",
+            12.34m,
             createdAt);
 
         Assert.NotEqual(Guid.Empty, product.Id.Value);
         Assert.Equal("SKU-001", product.Sku.Value);
         Assert.Equal("Test Product", product.Name.Value);
         Assert.Equal("Test description", product.Description);
+        Assert.Equal(12.34m, product.Price);
         Assert.True(product.IsActive);
         Assert.Equal(createdAt, product.CreatedAt);
         Assert.Null(product.UpdatedAt);
@@ -134,6 +136,100 @@ public sealed class ProductTests
             DateTimeOffset.UtcNow);
 
         Assert.Throws<ArgumentException>(() => product.Deactivate(default));
+    }
+
+    [Fact]
+    public void Create_WithNegativePrice_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            -0.01m,
+            DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void Create_WithMoreThanTwoDecimalPlaces_RoundsPrice()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            12.345m,
+            DateTimeOffset.UtcNow);
+
+        Assert.Equal(12.35m, product.Price);
+    }
+
+    [Fact]
+    public void Reactivate_WithInactiveProduct_SetsActiveAndUpdatedAt()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            DateTimeOffset.UtcNow);
+        var productId = product.Id;
+        var sku = product.Sku;
+        var deactivatedAt = DateTimeOffset.UtcNow.AddMinutes(1);
+        var reactivatedAt = DateTimeOffset.UtcNow.AddMinutes(2);
+
+        product.Deactivate(deactivatedAt);
+        product.Reactivate(reactivatedAt);
+
+        Assert.True(product.IsActive);
+        Assert.Equal(reactivatedAt, product.UpdatedAt);
+        Assert.Equal(productId, product.Id);
+        Assert.Equal(sku, product.Sku);
+    }
+
+    [Fact]
+    public void Reactivate_WithActiveProduct_IsIdempotent()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            DateTimeOffset.UtcNow);
+        var originalUpdatedAt = DateTimeOffset.UtcNow.AddMinutes(1);
+
+        product.UpdateDetails(
+            ProductName.Create("Updated Product"),
+            "Updated description",
+            originalUpdatedAt);
+        product.Reactivate(DateTimeOffset.UtcNow.AddMinutes(2));
+
+        Assert.True(product.IsActive);
+        Assert.Equal(originalUpdatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public void Reactivate_WithActiveProductAndDefaultUpdatedAt_IsIdempotent()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            DateTimeOffset.UtcNow);
+
+        product.Reactivate(default);
+
+        Assert.True(product.IsActive);
+        Assert.Null(product.UpdatedAt);
+    }
+
+    [Fact]
+    public void Reactivate_WithInactiveProductAndDefaultUpdatedAt_Throws()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            DateTimeOffset.UtcNow);
+        product.Deactivate(DateTimeOffset.UtcNow.AddMinutes(1));
+
+        Assert.Throws<ArgumentException>(() => product.Reactivate(default));
     }
 
     [Fact]

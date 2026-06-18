@@ -18,7 +18,12 @@ public sealed class ProjectStructureTests
         "Ecommerce.Catalog.Contracts",
         "Ecommerce.Catalog.Domain",
         "Ecommerce.Catalog.Infrastructure",
-        "Ecommerce.Catalog.UnitTests"
+        "Ecommerce.Catalog.UnitTests",
+        "Ecommerce.Orders.Application",
+        "Ecommerce.Orders.Contracts",
+        "Ecommerce.Orders.Domain",
+        "Ecommerce.Orders.Infrastructure",
+        "Ecommerce.Orders.UnitTests"
     };
 
     [Fact]
@@ -59,6 +64,6 @@ public sealed class ProjectStructureTests
             ? Directory.GetDirectories(modulesPath).Select(Path.GetFileName).OrderBy(name => name).ToArray()
             : Array.Empty<string>();
 
-        Assert.Equal(new[] { "Auth", "Catalog" }, modules);
+        Assert.Equal(new[] { "Auth", "Catalog", "Orders" }, modules);
     }
 }

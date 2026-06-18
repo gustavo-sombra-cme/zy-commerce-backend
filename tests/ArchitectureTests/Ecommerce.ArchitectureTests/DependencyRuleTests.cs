@@ -52,25 +52,26 @@ public sealed class DependencyRuleTests
     {
         foreach (var projectName in ProjectGraph.ProjectNames.Where(name => name.StartsWith("Ecommerce.BuildingBlocks.", StringComparison.Ordinal)))
         {
-            AssertNoProjectReferenceContains(projectName, new[] { "Ecommerce.Auth.", "Ecommerce.Catalog." });
+            AssertNoProjectReferenceContains(projectName, new[] { "Ecommerce.Auth.", "Ecommerce.Catalog.", "Ecommerce.Orders." });
         }
     }
 
     [Fact]
-    public void CatalogProjects_ShouldNotReference_AuthProjects()
+    public void ModuleProjects_ShouldNotReference_OtherModuleProjects()
     {
-        foreach (var projectName in ProjectGraph.ProjectNames.Where(name => name.StartsWith("Ecommerce.Catalog.", StringComparison.Ordinal)))
-        {
-            AssertNoProjectReferenceContains(projectName, new[] { "Ecommerce.Auth." });
-        }
-    }
+        var modules = new[] { "Auth", "Catalog", "Orders" };
 
-    [Fact]
-    public void AuthProjects_ShouldNotReference_CatalogProjects()
-    {
-        foreach (var projectName in ProjectGraph.ProjectNames.Where(name => name.StartsWith("Ecommerce.Auth.", StringComparison.Ordinal)))
+        foreach (var module in modules)
         {
-            AssertNoProjectReferenceContains(projectName, new[] { "Ecommerce.Catalog." });
+            foreach (var projectName in ProjectGraph.ProjectNames.Where(name => name.StartsWith($"Ecommerce.{module}.", StringComparison.Ordinal)))
+            {
+                var forbiddenModuleReferences = modules
+                    .Where(otherModule => otherModule != module)
+                    .Select(otherModule => $"Ecommerce.{otherModule}.")
+                    .ToArray();
+
+                AssertNoProjectReferenceContains(projectName, forbiddenModuleReferences);
+            }
         }
     }
 
@@ -80,7 +81,8 @@ public sealed class DependencyRuleTests
         var productionAssemblies = ProjectGraph.ProjectNames
             .Where(name => name.StartsWith("Ecommerce.BuildingBlocks.", StringComparison.Ordinal)
                 || name.StartsWith("Ecommerce.Auth.", StringComparison.Ordinal)
-                || name.StartsWith("Ecommerce.Catalog.", StringComparison.Ordinal))
+                || name.StartsWith("Ecommerce.Catalog.", StringComparison.Ordinal)
+                || name.StartsWith("Ecommerce.Orders.", StringComparison.Ordinal))
             .Where(name => !name.EndsWith(".UnitTests", StringComparison.Ordinal))
             .Where(name => !name.EndsWith(".ArchitectureTests", StringComparison.Ordinal))
             .Select(Assembly.Load);

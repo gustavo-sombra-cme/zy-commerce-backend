@@ -7,6 +7,9 @@
     <ProjectReference Include="..\..\Modules\Catalog\Ecommerce.Catalog.Application\Ecommerce.Catalog.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Catalog\Ecommerce.Catalog.Contracts\Ecommerce.Catalog.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Catalog\Ecommerce.Catalog.Infrastructure\Ecommerce.Catalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Orders\Ecommerce.Orders.Application\Ecommerce.Orders.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Orders\Ecommerce.Orders.Contracts\Ecommerce.Orders.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Orders\Ecommerce.Orders.Infrastructure\Ecommerce.Orders.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -15,6 +18,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
   </ItemGroup>
 

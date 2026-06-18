@@ -28,6 +28,8 @@ Current modules:
 
 - Catalog: implemented product features; write endpoints require bearer authentication and read endpoints remain public
 - Auth: Register User, Login User, JWT access token generation, JWT bearer validation, and protected Current User endpoint implemented through API and persistence
+- Orders: Create Order, List Orders For Current User, and Get Order By Id implemented with product snapshots and owner-scoped reads
+- Platform/API: health checks expose process liveness and Auth/Catalog/Orders database readiness; structured logging uses `X-Correlation-ID`; MCP exposes a protected allowlisted tool surface
 
 Current source boundaries:
 
@@ -35,7 +37,9 @@ Current source boundaries:
 - Infrastructure implements persistence and depends inward.
 - Domain remains independent.
 - BuildingBlocks must not reference modules.
-- Catalog and Auth must not reference each other.
+- Catalog, Auth, and Orders must not reference each other.
+- MCP is API-layer only and must dispatch existing Application/CQRS requests through `ISender`.
+- MCP adapter code must not call EF Core DbContexts, repositories, Domain objects, or module internals directly.
 
 ## Important Constraints
 
@@ -75,11 +79,57 @@ This is documented in:
 
 Do not revert product search back to aggregate value object access inside EF query filtering.
 
-Catalog has one manual migration for the product schema. Do not add migrations without explicit approval.
+Catalog has two manual migrations for the product schema: `InitialCatalogSchema` and `AddProductPrice`. Do not add migrations without explicit approval.
 
-Catalog supports Create Product, Get Product By Id, Search/List Products, Update Product Details, and Deactivate Product. Catalog `POST`, `PUT`, and `DELETE` product endpoints are protected; Catalog `GET` endpoints remain public. Update Product Details changes name and description only, preserves SKU, updates `UpdatedAt`, and does not require a migration.
+Catalog supports Create Product, Get Product By Id, Search/List Products, Update Product Details, Deactivate Product, and Reactivate Product. Create Product accepts non-negative `price`, stores it on the Product aggregate with `decimal(18,2)` persistence, and Catalog search/details responses return `price`. Catalog write endpoints are protected; Catalog `GET` endpoints remain public. Update Product Details changes name and description only, preserves SKU and price, updates `UpdatedAt`, and does not require a migration. Reactivate Product is idempotent: an inactive product becomes active and updates `UpdatedAt`; an already active product returns success without changing state or updating `UpdatedAt`.
 
 Auth has a `User` aggregate with `UserId`, `Email`, and `PasswordHash` value objects. Register User is wired through `POST /api/auth/users/register`. Login User is wired through `POST /api/auth/users/login` and returns `userId`, `email`, `accessToken`, `tokenType`, and `expiresAt`. JWT bearer authentication is configured in the API with explicit default authenticate and challenge schemes, and `GET /api/auth/users/me` is protected with `[Authorize]` and returns `userId` and `email` from the token claims. Swagger uses the standard HTTP bearer scheme with per-operation security metadata for `[Authorize]` actions; enter the raw JWT access token in the Authorize field and Swagger UI sends `Authorization: Bearer {token}`. Swagger UI authorization persistence is enabled. If generated Swagger curl lacks the `Authorization` header, restart the running API process and refresh Swagger because stale Swagger JSON may be served. Avoid adding refresh tokens, roles, permissions, protected Catalog read endpoints, token persistence, or Customers integration until approved.
+
+Platform health checks are API-only:
+
+- `GET /health/live` checks process liveness only and must not depend on database connectivity.
+- `GET /health/ready` checks Auth, Catalog, and Orders database readiness through existing EF Core DbContexts using `Database.CanConnectAsync`.
+- Health readiness must not create databases, apply migrations, or change schema.
+- No package was added for health checks.
+
+Platform structured logging is API-only:
+
+- Uses built-in ASP.NET Core logging only.
+- `X-Correlation-ID` is accepted, preserved when supplied, generated when missing, and returned on every response.
+- Request, exception, health readiness failure, and JWT authentication failure/challenge logs are structured.
+- Never log tokens, authorization headers, passwords, request bodies, or response bodies.
+- No package, migration, schema, Domain, Application, CQRS, module, or business behavior change was added for structured logging.
+
+Platform MCP integration is API-only:
+
+- Uses the official `ModelContextProtocol.AspNetCore` package in `Ecommerce.Api`.
+- `POST /mcp` is hosted as a protected stateless Streamable HTTP MCP endpoint.
+- MCP implementation lives under `src/Api/Ecommerce.Api/Mcp`.
+- MCP tools call existing Application/CQRS requests through `ISender`.
+- Approved tool allowlist:
+  - `catalog_search_products`
+  - `catalog_get_product_by_id`
+  - `orders_get_order_by_id`
+  - `orders_create_order`
+- `orders_create_order` requires explicit `confirmedByUser` input.
+- Orders MCP tools use the authenticated JWT `sub` claim for buyer/user context.
+- MCP must not expose Auth register/login, JWTs, passwords, authorization headers, raw database access, migrations, health readiness details, appsettings, environment variables, SQL, Catalog writes, cross-user orders, or non-existent Orders features.
+- ADR-003 documents MCP boundary and security.
+
+Orders current user order flows are implemented:
+
+- Projects exist: Domain, Application, Infrastructure, Contracts, UnitTests.
+- Domain model exists: `Order`, `OrderLine`, `OrderId`, `OrderLineId`, `BuyerId`, and `OrderStatus`.
+- API endpoints exist: `POST /api/orders`, `GET /api/orders`, and `GET /api/orders/{orderId}`.
+- All Orders endpoints require bearer authentication.
+- `GET /api/orders` is scoped to the authenticated buyer id, returns summaries only, supports `pageNumber`/`pageSize`, defaults to `1`/`20`, caps `pageSize` at `100`, and sorts newest first by `CreatedAt` descending.
+- `GET /api/orders/{orderId}` is scoped to the authenticated buyer id and returns not found for orders not owned by the user.
+- Orders uses product snapshot data supplied in the create request for this slice.
+- Product snapshot strategy is documented in `docs/decisions/ADR-002-orders-product-snapshot-strategy.md`.
+- Orders has one manual migration: `20260612090403_InitialOrdersSchema.cs`.
+- Local `EcommerceOrders` database was created and updated through `InitialOrdersSchema`.
+- Do not add direct Orders references to Catalog or Auth internals.
+- Do not add payments, inventory reservation, shipping, discounts, coupons, cancellation, refunds, advanced order workflows, Customer profile integration, or additional Orders MCP tools beyond the approved allowlist without explicit approval.
 
 ## Standard Verification
 
@@ -133,6 +183,13 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - JWT default authentication scheme fix
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
+- Catalog Reactivate Product
+- Platform Health Checks
+- Platform Structured Logging
+- Orders Initial Vertical Slice
+- Orders List For Current User
+- Catalog Product Price Write Support
+- MCP Server Integration
 - AI project memory documentation
 - AGENT.md router and instruction file split
 - Prompt standardization and reusable prompt template setup

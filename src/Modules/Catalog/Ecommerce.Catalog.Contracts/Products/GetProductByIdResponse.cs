@@ -5,6 +5,7 @@ public sealed record GetProductByIdResponse(
     string Sku,
     string Name,
     string? Description,
+    decimal Price,
     bool IsActive,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

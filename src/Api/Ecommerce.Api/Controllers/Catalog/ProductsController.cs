@@ -1,6 +1,7 @@
 using Ecommerce.Catalog.Application.Products.CreateProduct;
 using Ecommerce.Catalog.Application.Products.DeactivateProduct;
 using Ecommerce.Catalog.Application.Products.GetProductById;
+using Ecommerce.Catalog.Application.Products.ReactivateProduct;
 using Ecommerce.Catalog.Application.Products.SearchProducts;
 using Ecommerce.Catalog.Application.Products.UpdateProductDetails;
 using Ecommerce.Catalog.Contracts.Products;
@@ -33,6 +34,7 @@ public sealed class ProductsController(ISender sender) : ControllerBase
                     product.Sku,
                     product.Name,
                     product.Description,
+                    product.Price,
                     product.IsActive,
                     product.CreatedAt))
                 .ToArray(),
@@ -68,6 +70,7 @@ public sealed class ProductsController(ISender sender) : ControllerBase
             product.Sku,
             product.Name,
             product.Description,
+            product.Price,
             product.IsActive,
             product.CreatedAt,
             product.UpdatedAt));
@@ -82,7 +85,7 @@ public sealed class ProductsController(ISender sender) : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new CreateProductCommand(request.Sku, request.Name, request.Description),
+            new CreateProductCommand(request.Sku, request.Name, request.Description, request.Price),
             cancellationToken);
 
         var response = new CreateProductResponse(result.ProductId, result.Sku, result.Name);
@@ -115,6 +118,20 @@ public sealed class ProductsController(ISender sender) : ControllerBase
         CancellationToken cancellationToken)
     {
         await sender.Send(new DeactivateProductCommand(productId), cancellationToken);
+
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("{productId:guid}/reactivate")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReactivateProduct(
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        await sender.Send(new ReactivateProductCommand(productId), cancellationToken);
 
         return NoContent();
     }

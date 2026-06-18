@@ -10,6 +10,8 @@ internal sealed class ProductSearchReadModel
 
     public string? Description { get; private set; }
 
+    public decimal Price { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
