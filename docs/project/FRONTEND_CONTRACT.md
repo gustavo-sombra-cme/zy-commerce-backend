@@ -1,6 +1,6 @@
 # Frontend Contract
 
-Last Updated: 2026-06-18
+Last Updated: 2026-06-19
 
 This file captures frontend-facing API contract details that are easy to miss from backend implementation alone.
 
@@ -136,3 +136,77 @@ Gets one order owned by the authenticated user.
 - Requires `Authorization: Bearer {accessToken}`.
 - Returns `404 Not Found` when the order does not exist or belongs to another user.
 - Includes full order lines.
+
+## Assistant
+
+### POST /api/assistant/query
+
+Answers supported ecommerce questions by composing backend-approved read-only Catalog and Orders capabilities.
+
+Authentication:
+
+- Requires `Authorization: Bearer {accessToken}`.
+- The backend uses the JWT `sub` claim for all Orders analysis.
+- Do not send `userId` or `buyerId`; the request body does not support owner-scope inputs.
+
+Request:
+
+```json
+{
+  "question": "What products did I order?"
+}
+```
+
+Response `200 OK`:
+
+```json
+{
+  "answer": "You ordered: Tea (3 total).",
+  "toolsUsed": ["orders_search", "orders_get_order", "orders_analyze"],
+  "dataScope": "authenticated-user",
+  "unsupported": false,
+  "responseType": "orderedProducts",
+  "data": {
+    "products": [
+      {
+        "productSku": "SKU-1",
+        "productName": "Tea",
+        "quantity": 3
+      }
+    ]
+  }
+}
+```
+
+`responseType` and `data` are optional nullable fields. Existing clients can ignore them and continue rendering `answer`; `answer` remains the authoritative plain-text fallback for every response.
+
+Structured response types currently include `recentOrders`, `orderSummaryAnalytics`, `orderedProducts`, `matchingOrders`, `productFrequency`, `catalogProducts`, and `catalogProduct`.
+
+Safe unsupported response shape:
+
+```json
+{
+  "answer": "I can help with read-only product lookup and your own order history, but I cannot perform that request.",
+  "toolsUsed": [],
+  "dataScope": "none",
+  "unsupported": true,
+  "responseType": null,
+  "data": null
+}
+```
+
+Phase 1 supported question families:
+
+- Recent orders.
+- Products ordered.
+- Orders containing a product id, SKU, or name.
+- Total spend.
+- Most frequently purchased products.
+- Products under an amount.
+- Orders containing products over an amount.
+
+Rules:
+
+- Provider-backed intent interpretation is optional configuration; deterministic fallback remains available.
+- Read-only only.
+- Mutating, admin, SQL, token, database, internal, unclear, and cross-user questions return `unsupported: true`.

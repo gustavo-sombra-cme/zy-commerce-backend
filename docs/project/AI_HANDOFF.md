@@ -29,7 +29,7 @@ Current modules:
 - Catalog: implemented product features; write endpoints require bearer authentication and read endpoints remain public
 - Auth: Register User, Login User, JWT access token generation, JWT bearer validation, and protected Current User endpoint implemented through API and persistence
 - Orders: Create Order, List Orders For Current User, and Get Order By Id implemented with product snapshots and owner-scoped reads
-- Platform/API: health checks expose process liveness and Auth/Catalog/Orders database readiness; structured logging uses `X-Correlation-ID`; MCP exposes a protected allowlisted tool surface
+- Platform/API: health checks expose process liveness and Auth/Catalog/Orders database readiness; structured logging uses `X-Correlation-ID`; MCP exposes a protected allowlisted tool surface; the assistant endpoint exposes read-only Catalog/Orders orchestration with deterministic default intent interpretation, config-gated LLM interpretation, and validated untrusted intent plans
 
 Current source boundaries:
 
@@ -40,6 +40,8 @@ Current source boundaries:
 - Catalog, Auth, and Orders must not reference each other.
 - MCP is API-layer only and must dispatch existing Application/CQRS requests through `ISender`.
 - MCP adapter code must not call EF Core DbContexts, repositories, Domain objects, or module internals directly.
+- Assistant orchestration is API-layer only and must dispatch existing read-side Application/CQRS requests through `ISender`.
+- Assistant code must not call EF Core DbContexts, repositories, Domain objects, module internals, write commands, or MCP protocol packages directly.
 
 ## Important Constraints
 
@@ -116,6 +118,28 @@ Platform MCP integration is API-only:
 - MCP must not expose Auth register/login, JWTs, passwords, authorization headers, raw database access, migrations, health readiness details, appsettings, environment variables, SQL, Catalog writes, cross-user orders, or non-existent Orders features.
 - ADR-003 documents MCP boundary and security.
 
+Platform assistant orchestration is API-only:
+
+- `POST /api/assistant/query` is protected by bearer authentication.
+- Request body accepts only a natural-language `question`; it does not accept `userId`, `buyerId`, or tool selection from the caller.
+- Implementation lives under `src/Api/Ecommerce.Api/Assistant` and `src/Api/Ecommerce.Api/Controllers/Assistant`.
+- The assistant uses `IAssistantIntentInterpreter`; disabled-mode production DI resolves `DeterministicAssistantIntentInterpreter` by default.
+- `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
+- The provider adapter returns only structured `AssistantIntentPlan` JSON and never executes tools directly.
+- Interpreter output is represented as an untrusted `AssistantIntentPlan` and must pass `AssistantIntentPlanValidator` before any execution.
+- The validator rejects unknown tools, invalid arguments, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
+- No provider SDK package, committed API key, committed secret, live test call, database change, migration, or MCP dependency has been added.
+- API keys must come only from environment variables or user secrets/non-committed configuration providers. Do not put API keys in `appsettings*.json`.
+- Do not log prompts, raw provider responses, API keys, tokens, auth headers, or sensitive payloads.
+- Temporary assistant LLM configuration diagnostics log only booleans/presence flags and fallback/failure status; they must not be expanded to include prompts, raw provider responses, API key values, auth headers, tokens, or sensitive payloads.
+- Approved internal capability allowlist: `catalog_search`, `catalog_get_product`, `orders_search`, `orders_get_order`, `orders_analyze`.
+- Orders analysis uses the authenticated JWT `sub` claim for buyer scope.
+- Supported Phase 1 questions include recent orders, products ordered, orders containing a product/SKU/name, total spend, most frequently purchased products, products under an amount, and orders containing products over an amount.
+- Mutating, admin, SQL, token, database, internal, unclear, and cross-user requests must return safe unsupported responses.
+- ADR-004 documents the assistant orchestration boundary and safety model.
+- ADR-005 documents untrusted assistant intent interpretation and plan validation.
+- ADR-006 documents config-gated LLM provider integration.
+
 Orders current user order flows are implemented:
 
 - Projects exist: Domain, Application, Infrastructure, Contracts, UnitTests.
@@ -189,6 +213,10 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - Orders Initial Vertical Slice
 - Orders List For Current User
 - Catalog Product Price Write Support
+- Ecommerce Assistant Agent Phase 1
+- Assistant Intent Interpreter Phase 2
+- Assistant LLM Provider Integration Phase 3
+- Assistant LLM Configuration Diagnostics
 - MCP Server Integration
 - AI project memory documentation
 - AGENT.md router and instruction file split

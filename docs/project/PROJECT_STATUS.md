@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-Date: 2026-06-18
+Date: 2026-06-19
 
 The repository is a .NET 9 ASP.NET Core backend for an enterprise e-commerce system. It follows Clean Architecture First, Modular Monolith, Module Isolation, CQRS, and thin controller rules.
 
@@ -260,6 +260,33 @@ Current platform MCP behavior:
 - Orders MCP reads are scoped to the authenticated user id from the JWT `sub` claim.
 - MCP does not expose Auth register/login, JWTs, passwords, authorization headers, raw database access, migrations, health readiness details, appsettings, environment variables, SQL, Catalog writes, cross-user orders, or non-existent Orders features.
 
+Current platform assistant behavior:
+
+- Hosts protected `POST /api/assistant/query`.
+- Keeps the `POST /api/assistant/query` request/response contract unchanged.
+- Uses `IAssistantIntentInterpreter` with `DeterministicAssistantIntentInterpreter` as the disabled-mode production default.
+- Can use `LlmAssistantIntentInterpreter` when `Assistant:Llm:Enabled` is explicitly enabled and provider endpoint/model/API key configuration is supplied outside committed secrets.
+- The LLM provider adapter uses `HttpClientFactory` and `System.Text.Json`; no provider SDK package was added.
+- Treats interpreter output as an untrusted `AssistantIntentPlan` that must pass `AssistantIntentPlanValidator` before execution.
+- Validates proposed intent kind, tool names, and arguments against the approved read-only assistant capability allowlist.
+- Rejects unknown tools, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
+- No API key, secret, provider SDK package, live test call, database change, migration, or MCP dependency has been added.
+- Assistant implementation lives under `src/Api/Ecommerce.Api/Assistant` with transport in `src/Api/Ecommerce.Api/Controllers/Assistant`.
+- Assistant capabilities are internally allowlisted as:
+  - `catalog_search`
+  - `catalog_get_product`
+  - `orders_search`
+  - `orders_get_order`
+  - `orders_analyze`
+- Assistant dispatches existing Catalog and Orders read-side CQRS queries through `ISender`.
+- Assistant does not call EF Core DbContexts, repositories, Domain objects, or module internals directly.
+- Orders analysis uses the authenticated JWT `sub` claim as buyer scope and does not accept buyer/user id from the request body.
+- Supported Phase 1 questions include recent orders, products ordered, orders containing a product/SKU/name, total spend, most frequently purchased products, products under an amount, and orders containing products over an amount.
+- Mutating, admin, SQL, token, database, internal implementation, unclear, and cross-user questions return a safe unsupported response.
+- ADR-004 documents the assistant orchestration boundary and safety model.
+- ADR-005 documents untrusted assistant intent interpretation and plan validation.
+- ADR-006 documents the config-gated provider-backed LLM interpreter.
+
 Swagger/OpenAPI is enabled for local Development only. Swagger uses the standard HTTP bearer security scheme and includes an Authorize button. Protected operations are marked with per-operation security metadata from `[Authorize]`, while public endpoints remain public. In Swagger Authorize, enter the raw JWT access token only; Swagger UI sends `Authorization: Bearer {token}`. Swagger UI persists authorization across browser refreshes.
 
 ## Database Status
@@ -317,6 +344,10 @@ Architecture tests enforce:
 - Auth current-user endpoint remains protected.
 - Orders endpoints require authorization.
 - MCP `/mcp` endpoint requires authorization.
+- Assistant `POST /api/assistant/query` endpoint requires authorization.
+- Assistant exposes only the approved read-only capability allowlist.
+- Assistant API-layer types must not depend on EF Core, repositories, Domain projects, module persistence internals, or MCP protocol packages.
+- Assistant source must not reference write commands.
 - MCP exposes only the approved tool allowlist.
 - MCP adapter types must not depend on EF Core, repositories, Domain projects, or module persistence internals.
 - Only approved projects exist.
@@ -484,6 +515,74 @@ Latest code execution after Catalog Product Price Write Support:
 - Orders unit tests: 23 passed
 - Architecture tests: 48 passed
 
+Latest code execution after Ecommerce Assistant Agent Phase 1:
+
+- Added protected `POST /api/assistant/query`.
+- Added deterministic API-layer assistant orchestration with an internal read-only Catalog/Orders capability allowlist.
+- Added safe unsupported handling for mutating, admin, SQL, token, database, internal, unclear, and cross-user requests.
+- Orders assistant analysis is owner-scoped to the authenticated JWT `sub` claim.
+- Assistant dispatches existing read-side CQRS queries through `ISender` and does not call EF Core DbContexts, repositories, Domain objects, module internals, or MCP protocol code directly.
+- Added ADR-004 for the assistant orchestration boundary and safety model.
+- No packages, migrations, database changes, external AI provider, MCP changes, Catalog writes, Orders writes, Auth behavior changes, or frontend behavior changes were created.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: blocked by running process `Ecommerce.Api (36008)` locking `src/Api/Ecommerce.Api/bin/Debug/net9.0/Ecommerce.Api.dll`
+- `dotnet build Ecommerce.sln --artifacts-path artifacts\assistant-verify`: passed
+- `dotnet test Ecommerce.sln --artifacts-path artifacts\assistant-test`: passed
+- Catalog unit tests: 75 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 23 passed
+- Architecture tests: 71 passed
+
+Latest code execution after Assistant Intent Interpreter Phase 2:
+
+- Added `IAssistantIntentInterpreter` and `DeterministicAssistantIntentInterpreter`.
+- Added `AssistantIntentPlan`, `AssistantSafetyPolicy`, and `AssistantIntentPlanValidator`.
+- Kept deterministic interpretation as the production default and fallback path.
+- Added fake interpreter support through tests only; no real external LLM provider, provider package, API key, secret, configuration value, or live network call was added.
+- Kept `POST /api/assistant/query` contract unchanged.
+- Kept assistant execution read-only, owner-scoped to JWT `sub`, and routed through existing Catalog/Orders read-side CQRS queries via `ISender`.
+- Invalid plans, unknown tools, unsafe questions, and model-provided user/buyer scope fail closed without dispatch.
+- Added ADR-005 for untrusted assistant intent interpretation.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 75 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 23 passed
+- Architecture tests: 81 passed
+
+Latest code execution after Assistant LLM Provider Integration Phase 3:
+
+- Added config-gated `LlmAssistantIntentInterpreter`.
+- Added `AssistantLlmOptions`, `IAssistantLlmClient`, `HttpAssistantLlmClient`, and `AssistantIntentPlanJsonParser`.
+- Added non-secret `Assistant:Llm` settings in `appsettings.json`; API keys remain external.
+- The API key is resolved at runtime from the configured environment variable name or non-committed user-secrets/config binding.
+- LLM output is parsed only as structured `AssistantIntentPlan` JSON and still validated by `AssistantIntentPlanValidator` before execution.
+- Deterministic interpretation remains disabled-mode default and fallback for missing secret, disabled config, provider failure, timeout/cancellation, and malformed JSON.
+- Added fake provider/client tests only; no live provider calls were added.
+- Added ADR-006 for provider-backed LLM interpretation.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 75 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 23 passed
+- Architecture tests: 88 passed
+
+Latest code execution after Assistant LLM Configuration Diagnostics:
+
+- Added temporary safe diagnostic logs for assistant LLM configuration and fallback behavior.
+- Logs include only booleans/presence flags for LLM enabled state, endpoint presence/validity, model presence, API key environment variable name presence, API key resolved state, provider call attempted/failed state, deterministic fallback usage, and model output validation failure.
+- No API key values, prompts, raw model responses, auth headers, tokens, or sensitive payloads are logged.
+- Assistant behavior was not changed.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 75 passed
+- Auth unit tests: 65 passed
+- Orders unit tests: 23 passed
+- Architecture tests: 88 passed
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:
@@ -500,3 +599,4 @@ The repository intentionally does not currently include:
 - payments, inventory reservation, shipping, discounts, coupons, order cancellation, refunds, advanced order status workflows, and Customer profile integration
 - Auth refresh token, roles, permissions, protected Catalog read endpoint, or token persistence features
 - MCP tools beyond the approved initial allowlist
+- committed LLM API keys/secrets, provider SDK packages, live provider calls in tests, assistant write actions, assistant raw SQL/database access, assistant admin analytics, or assistant cross-user access

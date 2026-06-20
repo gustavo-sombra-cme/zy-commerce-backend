@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-06-18
+**Last Updated:** 2026-06-19
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -26,6 +26,10 @@ This file is designed to allow a future AI session to resume project work in les
 - Orders Initial Vertical Slice (`POST /api/orders`, `GET /api/orders/{orderId}`)
 - Orders List For Current User (`GET /api/orders`)
 - MCP Server Integration (`POST /mcp`, protected allowlisted MCP tools)
+- Ecommerce Assistant Agent Phase 1 (`POST /api/assistant/query`, protected deterministic read-only orchestration)
+- Assistant Intent Interpreter Phase 2 (`IAssistantIntentInterpreter`, deterministic default, untrusted plan validation, fake interpreter tests only)
+- Assistant LLM Provider Integration Phase 3 (`LlmAssistantIntentInterpreter`, config-gated provider options, HTTP client adapter, fake provider tests only)
+- Assistant LLM Configuration Diagnostics (temporary safe boolean/presence logs for LLM config, provider failure, fallback, and validation failure)
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
 - JWT default authentication scheme fix
@@ -91,6 +95,27 @@ All approved projects exist and build successfully:
 - Orders MCP tools use the authenticated JWT `sub` claim for owner context.
 - MCP does not expose Auth register/login, JWTs, passwords, authorization headers, raw database access, migrations, health readiness details, appsettings, environment variables, SQL, Catalog writes, cross-user orders, or non-existent Orders features.
 
+### Platform Assistant Orchestration
+
+- `POST /api/assistant/query` is protected by bearer authentication.
+- The request accepts a natural-language `question` only; it does not accept `userId`, `buyerId`, or caller-selected tools.
+- Implementation lives under `src/Api/Ecommerce.Api/Assistant` and `src/Api/Ecommerce.Api/Controllers/Assistant`.
+- Assistant intent interpretation goes through `IAssistantIntentInterpreter`; disabled-mode production DI resolves `DeterministicAssistantIntentInterpreter` by default.
+- `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
+- `Assistant:Llm` settings are committed only with non-secret values. API keys must come from the configured environment variable or user secrets/non-committed configuration providers.
+- Interpreter output is an untrusted `AssistantIntentPlan` that must pass `AssistantIntentPlanValidator` before any execution.
+- The validator checks intent kind, exact read-only tool plan, allowed arguments, unsafe request terms, and model-provided scope arguments.
+- Temporary LLM diagnostics log only safe booleans/presence flags for config, provider call failure, deterministic fallback usage, and model output validation failure.
+- Fake/test interpreters and fake provider clients are used in tests only; no provider SDK package, committed API key, committed secret, live test call, database change, migration, or MCP dependency has been added.
+- Approved capability names are `catalog_search`, `catalog_get_product`, `orders_search`, `orders_get_order`, and `orders_analyze`.
+- Assistant code dispatches existing Catalog and Orders read-side CQRS queries through `ISender`.
+- Assistant code must not call EF Core DbContexts, repositories, Domain objects, module internals, write commands, or MCP protocol packages directly.
+- Orders assistant analysis is owner-scoped to the authenticated JWT `sub` claim.
+- Unsafe, mutating, admin, SQL, token, database, internal, unclear, and cross-user requests return safe unsupported responses.
+- ADR-004 documents the assistant orchestration boundary and safety model.
+- ADR-005 documents untrusted assistant intent interpretation and plan validation.
+- ADR-006 documents config-gated LLM provider integration.
+
 ### Database Status
 
 - **Persistence:** SQL Server LocalDB `(localdb)\mssqllocaldb`
@@ -103,7 +128,7 @@ All approved projects exist and build successfully:
 
 ### Build & Test Status
 
-Last verified pass (2026-06-18):
+Last verified pass (2026-06-19):
 ```
 dotnet restore Ecommerce.sln               PASSED
 dotnet build Ecommerce.sln                 PASSED
@@ -111,7 +136,7 @@ dotnet test Ecommerce.sln                  PASSED
   - Catalog Unit Tests: 75 passed
   - Auth Unit Tests: 65 passed
   - Orders Unit Tests: 23 passed
-  - Architecture Tests: 48 passed
+  - Architecture Tests: 88 passed
 ```
 
 ---
@@ -275,6 +300,13 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 27. Platform Structured Logging
 28. Orders Initial Vertical Slice
 29. Orders List For Current User
+30. Catalog Product Price Write Support
+31. MCP Server Integration
+32. Product Knowledge Documentation Pack
+33. Ecommerce Assistant Agent Phase 1
+34. Assistant Intent Interpreter Phase 2
+35. Assistant LLM Provider Integration Phase 3
+36. Assistant LLM Configuration Diagnostics
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -286,6 +318,8 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 - Orders Catalog validation/integration planning
 - MCP frontend integration planning
 - MCP authorization policy/rate limiting planning
+- Assistant frontend integration planning
+- Assistant provider-specific production configuration or operational smoke testing
 - Catalog write authorization policy refinement
 - Integration testing setup
 - Platform features (API versioning, configuration validation, etc.)
@@ -296,7 +330,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was Catalog Product Price Write Support. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Assistant LLM Configuration Diagnostics. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 **How to Proceed:**
 
@@ -453,6 +487,38 @@ Do NOT expose:
 - non-existent Orders features
 - tools beyond the approved allowlist
 
+### Important: Assistant Is Read-Only API Orchestration
+
+Current assistant endpoint:
+- `POST /api/assistant/query` protected by bearer authentication.
+
+Current capability allowlist:
+- `catalog_search`
+- `catalog_get_product`
+- `orders_search`
+- `orders_get_order`
+- `orders_analyze`
+
+Assistant handlers must call existing read-side Application/CQRS requests through `ISender`. Do NOT call EF Core DbContexts, repositories, Domain objects, module internals, write commands, or MCP protocol packages from assistant code. Do NOT accept `userId` or `buyerId` from the request body. Orders analysis must use the JWT `sub` claim.
+
+Interpreter output is untrusted. The LLM provider must return only structured intent/tool plans, and those plans must pass deterministic backend validation before execution. Reject unknown tools, unsafe requests, mutating/admin/SQL/cross-user plans, and any model-provided user or buyer scope.
+
+LLM provider secrets must come only from environment variables or user secrets/non-committed configuration providers. Do not commit API keys. Do not log prompts, raw provider responses, tokens, API keys, auth headers, or sensitive payloads. Automated tests must keep using fake provider clients, not live network calls.
+
+Temporary LLM diagnostics are allowed to log only booleans/presence flags and fallback/failure status. Do not expand them to include prompt text, raw provider responses, API key values, auth headers, tokens, or sensitive payloads.
+
+Do NOT expose:
+- raw SQL
+- database internals
+- tokens or authorization headers
+- internal prompts/routing details
+- mutating actions
+- Catalog writes
+- Orders writes
+- admin analytics
+- cross-user data
+- provider SDK packages, committed LLM secrets, or live provider calls in automated tests without explicit approval
+
 ### Important: Structured Logging Is API/Platform-Only
 
 Current structured logging uses built-in ASP.NET Core logging only. `X-Correlation-ID` must be preserved when supplied and returned on every response.
@@ -528,7 +594,14 @@ dotnet test Ecommerce.sln
 # - Catalog Unit Tests: 75 passed
 # - Auth Unit Tests: 65 passed
 # - Orders Unit Tests: 23 passed
-# - Architecture Tests: 48 passed
+# - Architecture Tests: 88 passed
+```
+
+If a local API process is running and locks `src/Api/Ecommerce.Api/bin/Debug/net9.0/Ecommerce.Api.dll`, either stop that process intentionally or verify with isolated artifacts:
+
+```powershell
+dotnet build Ecommerce.sln --artifacts-path artifacts\assistant-verify
+dotnet test Ecommerce.sln --artifacts-path artifacts\assistant-test
 ```
 
 If build or tests fail, check:
@@ -554,6 +627,9 @@ If build or tests fail, check:
 | Product Search Decision | `docs/decisions/ADR-001-product-search-read-model.md` |
 | Orders Product Snapshot Decision | `docs/decisions/ADR-002-orders-product-snapshot-strategy.md` |
 | MCP Boundary And Security Decision | `docs/decisions/ADR-003-mcp-server-boundary-and-security.md` |
+| Assistant Boundary And Safety Decision | `docs/decisions/ADR-004-assistant-orchestration-boundary-and-safety.md` |
+| Assistant Untrusted Intent Interpretation Decision | `docs/decisions/ADR-005-assistant-untrusted-intent-interpretation.md` |
+| Assistant LLM Provider Integration Decision | `docs/decisions/ADR-006-assistant-llm-provider-integration.md` |
 | Frontend Contract | `docs/project/FRONTEND_CONTRACT.md` |
 | Recent Prompts | `docs/prompts/` (start with highest numbers) |
 

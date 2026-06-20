@@ -1,4 +1,5 @@
 using System.Text;
+using Ecommerce.Api.Assistant;
 using Ecommerce.Api.HealthChecks;
 using Ecommerce.Api.Middleware;
 using Ecommerce.Api.Mcp;
@@ -16,6 +17,7 @@ using Ecommerce.Orders.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 const string LiveHealthCheckTag = "live";
@@ -46,6 +48,24 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.Configure<AssistantLlmOptions>(
+    builder.Configuration.GetSection(AssistantLlmOptions.SectionName));
+builder.Services.AddScoped<AssistantOrchestrator>();
+builder.Services.AddSingleton<AssistantSafetyPolicy>();
+builder.Services.AddSingleton<AssistantIntentRouter>();
+builder.Services.AddSingleton<AssistantIntentPlanValidator>();
+builder.Services.AddSingleton<AssistantIntentPlanJsonParser>();
+builder.Services.AddSingleton<DeterministicAssistantIntentInterpreter>();
+builder.Services.AddHttpClient<IAssistantLlmClient, HttpAssistantLlmClient>();
+builder.Services.AddScoped<LlmAssistantIntentInterpreter>();
+builder.Services.AddScoped<IAssistantIntentInterpreter>(services =>
+{
+    var options = services.GetRequiredService<IOptions<AssistantLlmOptions>>().Value;
+    return options.Enabled
+        ? services.GetRequiredService<LlmAssistantIntentInterpreter>()
+        : services.GetRequiredService<DeterministicAssistantIntentInterpreter>();
+});
+builder.Services.AddSingleton<AssistantToolRegistry>();
 
 builder.Services.AddSwaggerGen(options =>
 {

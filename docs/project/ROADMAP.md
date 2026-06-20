@@ -40,6 +40,12 @@
 - ADR for Orders product snapshot strategy
 - MCP Server Integration
 - ADR for MCP server boundary and security
+- Ecommerce Assistant Agent Phase 1
+- ADR for assistant orchestration boundary and safety
+- Assistant Intent Interpreter Phase 2
+- ADR for untrusted assistant intent interpretation
+- Assistant LLM Provider Integration Phase 3
+- ADR for config-gated assistant LLM provider integration
 - Project memory documentation
 - AGENT.md router and instruction file split
 - Prompt standardization and reusable prompt template setup
@@ -136,6 +142,30 @@ Not currently started:
 - raw database or SQL MCP tools
 - health readiness MCP tools
 - MCP resources or prompts
+
+## Assistant Candidates
+
+Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, strict untrusted `AssistantIntentPlan` validation, and fake provider tests only.
+
+Potential future phases:
+
+- Production provider configuration and operational smoke testing outside automated tests
+- Provider-specific payload tuning if the selected provider does not match the current chat-completions style adapter
+- Additional read-only analysis tools after explicit approval
+- Dedicated assistant authorization policy or rate limiting
+- Frontend integration with the backend assistant endpoint
+
+Not currently started:
+
+- mutating assistant actions
+- order creation through assistant
+- Catalog writes through assistant
+- raw SQL or database tools
+- admin analytics
+- cross-user analysis
+- committed LLM API keys or secrets
+- provider SDK packages
+- live provider calls in automated tests
 
 ## Platform Candidates
 

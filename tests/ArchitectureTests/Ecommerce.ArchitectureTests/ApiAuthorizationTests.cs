@@ -1,5 +1,6 @@
 using System.Reflection;
 using Ecommerce.Api.Controllers.Auth;
+using Ecommerce.Api.Controllers.Assistant;
 using Ecommerce.Api.Controllers.Catalog;
 using Ecommerce.Api.Controllers.Orders;
 using Ecommerce.Orders.Contracts.Orders;
@@ -61,6 +62,14 @@ public sealed class ApiAuthorizationTests
         Assert.True(HasAuthorizeAttribute(method), $"{actionName} should require authorization.");
     }
 
+    [Fact]
+    public void AssistantQueryEndpoint_ShouldRequireAuthorization()
+    {
+        var method = GetAction(typeof(AssistantController), nameof(AssistantController.Query));
+
+        Assert.True(HasAuthorizeAttribute(method), "Assistant query should require authorization.");
+    }
+
     [Theory]
     [InlineData(nameof(ProductsController.CreateProduct), typeof(HttpPostAttribute))]
     [InlineData(nameof(ProductsController.UpdateProductDetails), typeof(HttpPutAttribute))]
@@ -82,6 +91,14 @@ public sealed class ApiAuthorizationTests
         var method = GetAction(typeof(OrdersController), actionName);
 
         Assert.Contains(method.GetCustomAttributes(), attribute => attribute.GetType() == attributeType);
+    }
+
+    [Fact]
+    public void AssistantQueryEndpoint_ShouldUsePost()
+    {
+        var method = GetAction(typeof(AssistantController), nameof(AssistantController.Query));
+
+        Assert.Contains(method.GetCustomAttributes(), attribute => attribute.GetType() == typeof(HttpPostAttribute));
     }
 
     [Fact]
