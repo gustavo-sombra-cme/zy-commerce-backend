@@ -51,12 +51,14 @@
 - AGENT.md router and instruction file split
 - Prompt standardization and reusable prompt template setup
 - Prompt template compliance contract enhancement
+- Feature demo slide deliverable workflow
 
 ## Current Priorities
 
 - Keep architecture tests green as modules evolve.
 - Use `docs/project/PROMPT_TEMPLATE.md` to keep future planning and execution prompts shorter while preserving approval, logging, architecture, DDD, CQRS, testing, and documentation rules.
 - For short planning prompts, preserve the full Plan Output Contract and Plan Self-Validation Rule in `docs/project/PROMPT_TEMPLATE.md`.
+- For main/demo-worthy feature executions, create or update `docs/demo/features/{feature-slug}-demo-slides.md` with slide-ready Markdown, Mermaid diagrams where useful, speaker cues, demo script, test evidence, risks/tradeoffs, and Q&A talking points.
 - Keep project memory documentation current after execution tasks.
   - Update `docs/project/NEXT_SESSION.md` after every completed execution task.
   - Update `docs/project/PROJECT_STATUS.md` for state changes.
@@ -184,3 +186,4 @@ Potential future work:
 - Additional ADRs for module integration strategy
 - Learning journal entries when requested
 - README onboarding once the architecture stabilizes
+- Reusable cross-project Codex skill for feature demo slide generation after the repo workflow proves stable

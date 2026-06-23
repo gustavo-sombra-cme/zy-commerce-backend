@@ -16,6 +16,7 @@ Agent operating rules are split between a short `AGENT.md` router and detailed f
 - `docs/project/NEXT_SESSION.md` - Fast resume guide (< 5 minutes to read)
 - `docs/project/PROMPT_TEMPLATE.md` - Reusable planning and execution prompt defaults for shorter future prompts
 - `docs/project/FRONTEND_CONTRACT.md` - Frontend-facing API contract notes
+- `docs/demo/features/` - Feature-focused demo slide source files for main/demo-worthy feature executions
 
 ## Solution Structure
 
@@ -367,9 +368,9 @@ Agent rule files:
 - `instructions/01-execution-and-planning.md` contains state, execution lock, planning rules, and short-prompt expansion rules.
 - `instructions/02-architecture-and-modules.md` contains Clean Architecture and module rules.
 - `instructions/03-cqrs-database-testing-security.md` contains CQRS, DDD ownership, database, testing, architecture test, and security rules.
-- `instructions/04-documentation-and-memory.md` contains prompt logging, reusable template location, project memory, AGENT replacement, ADR, and learning journal rules.
+- `instructions/04-documentation-and-memory.md` contains prompt logging, reusable template location, project memory, feature demo slide deliverables, AGENT replacement, ADR, and learning journal rules.
 - `instructions/05-completion.md` contains self-review, execution summary, and completion rules.
-- `docs/project/PROMPT_TEMPLATE.md` defines default PLAN MODE and APPROVED EXECUTE expectations, including a strict Plan Output Contract and Plan Self-Validation Rule so future prompts can be shorter without weakening execution lock, prompt logging, architecture, DDD, CQRS, module isolation, testing, or documentation rules.
+- `docs/project/PROMPT_TEMPLATE.md` defines default PLAN MODE and APPROVED EXECUTE expectations, including a strict Plan Output Contract, Plan Self-Validation Rule, and feature demo slide deliverable rule so future prompts can be shorter without weakening execution lock, prompt logging, architecture, DDD, CQRS, module isolation, testing, or documentation rules.
 
 ## Test Status
 
@@ -396,6 +397,17 @@ Latest documentation-only execution after Prompt Template Compliance Contract En
 - `docs/project/PROMPT_TEMPLATE.md` now requires exact planning section names, a full plan output structure, and internal self-validation before returning plans from short prompts.
 - `instructions/01-execution-and-planning.md` now points short planning prompts to the full template contract.
 - No code or project structure changed.
+- Restore, build, and test were intentionally not run.
+- Documentation self-review was performed.
+
+Latest documentation-only execution after Feature Demo Slide Deliverable Workflow:
+
+- `docs/project/PROMPT_TEMPLATE.md` now requires feature demo slide Markdown deliverables for main features, major platform capabilities, API modules, integrations, and demo-worthy backend behavior.
+- `instructions/04-documentation-and-memory.md` now defines the durable feature demo slide deliverable rule.
+- Default slide source location is `docs/demo/features/{feature-slug}-demo-slides.md`.
+- `docs/demo/features/` was added as the standard location for future feature demo slide sources.
+- Tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, and documentation-only maintenance do not require slide files unless explicitly requested.
+- No application code, project references, packages, APIs, database schema, or migrations changed.
 - Restore, build, and test were intentionally not run.
 - Documentation self-review was performed.
 

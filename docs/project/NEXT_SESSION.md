@@ -40,6 +40,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Instruction file consolidation (V2 rule set)
 - Prompt standardization and reusable prompt template setup (`docs/project/PROMPT_TEMPLATE.md`)
 - Prompt template compliance contract enhancement for complete short-prompt plans
+- Feature demo slide deliverable workflow (`docs/demo/features/{feature-slug}-demo-slides.md`)
 
 ---
 
@@ -559,6 +560,8 @@ Short planning prompts must return every section from the template's Plan Output
 
 Short prompts do not override the execution lock, prompt logging, Clean Architecture, DDD, CQRS, module isolation, testing, security, or completion rules.
 
+For main features, major platform capabilities, API modules, integrations, or demo-worthy backend behavior, future approved executions must create or update `docs/demo/features/{feature-slug}-demo-slides.md`. The slide source must be presentation-ready Markdown with required sections, Mermaid diagrams where useful, and `Speaker cue:` lines. Tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, and documentation-only maintenance do not require slide files unless explicitly requested.
+
 Historical prompt logs under `docs/prompts/` must not be rewritten for style cleanup.
 
 ### Important: No Bootstrapper or Shared Projects
@@ -627,6 +630,7 @@ If build or tests fail, check:
 | Architecture Strategy | `instructions/00-role-and-stack.md#current-architecture-strategy` |
 | Execution Lock | `instructions/01-execution-and-planning.md#execution-lock` |
 | Reusable Prompt Template | `docs/project/PROMPT_TEMPLATE.md` |
+| Feature Demo Slides | `docs/demo/features/` |
 | CQRS Rules | `instructions/03-cqrs-database-testing-security.md#cqrs-rules` |
 | DDD Ownership Rules | `instructions/03-cqrs-database-testing-security.md#ddd-ownership-rules` |
 | Module Isolation | `instructions/02-architecture-and-modules.md#module-rules` |

@@ -86,6 +86,58 @@ Do not record speculative work as completed.
 
 ---
 
+# FEATURE DEMO SLIDE DELIVERABLE RULE
+
+For every completed execution task that implements or materially changes a main feature, major platform capability, API module, integration, or demo-worthy backend behavior, create or update a presentation-ready Markdown slide source file.
+
+Location:
+
+docs/demo/features/
+
+Naming format:
+
+{feature-slug}-demo-slides.md
+
+Examples:
+
+* mcp-server-integration-demo-slides.md
+* orders-list-current-user-demo-slides.md
+* catalog-product-price-write-support-demo-slides.md
+
+This deliverable is not required for tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, or documentation-only maintenance unless the user explicitly requests it.
+
+Each feature demo slide file must include, when applicable:
+
+* Feature title
+* Business purpose
+* Problem solved
+* Architecture overview
+* Implementation files
+* API/contracts involved
+* Database impact
+* Security/authorization behavior
+* Main sequence diagram
+* Demo script
+* Test evidence
+* Risks/tradeoffs
+* Q&A talking points
+
+Use Mermaid diagrams where useful:
+
+* Architecture diagram
+* Sequence diagram
+* Data flow diagram when applicable
+
+Every slide should include a short `Speaker cue:` line.
+
+The execution summary must mention the generated or updated feature demo slide file. If a slide file is not required, the execution summary must state why.
+
+When the feature changes project state, update project memory to reference the demo slide file where useful.
+
+Reusable demo slide guidance belongs in project documentation. Do not place reusable slide templates in `docs/prompts/`; that directory is for chronological prompt logs.
+
+---
+
 # NEXT_SESSION.md MAINTENANCE RULE
 
 NEXT_SESSION.md is a fast resume guide optimized for new sessions with no conversation history.
