@@ -265,6 +265,7 @@ When the prompt starts with `APPROVED: EXECUTE` or `Execute approved ...`:
 * Follow the approved plan exactly.
 * Do not add unapproved modules, projects, migrations, schema changes, APIs, packages, auth behavior, or cross-module references.
 * Update project memory after completed execution when project state changes.
+* Create or update the feature demo slide deliverable when the approved scope is a main feature, major platform capability, API module, integration, or demo-worthy backend behavior.
 * Run standard verification for code or project changes.
 
 ## Default Verification Commands
@@ -297,6 +298,63 @@ Add manual verification when API, auth, database, Swagger, or behavior-visible c
 9. Deviations From Plan
 10. Risks / Follow-ups
 11. TASK STATUS
+
+## Feature Demo Slide Deliverable
+
+For every approved execution task that implements or materially changes a main feature, major platform capability, API module, integration, or demo-worthy backend behavior, create or update a presentation-ready Markdown slide source file.
+
+Default location:
+
+```text
+docs/demo/features/{feature-slug}-demo-slides.md
+```
+
+Examples:
+
+```text
+docs/demo/features/mcp-server-integration-demo-slides.md
+docs/demo/features/orders-list-current-user-demo-slides.md
+docs/demo/features/catalog-product-price-write-support-demo-slides.md
+```
+
+The slide deliverable is not required for tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, or documentation-only maintenance unless the user explicitly requests it.
+
+Each feature demo slide file must be structured as slide-ready Markdown and include, when applicable:
+
+* Feature title
+* Business purpose
+* Problem solved
+* Architecture overview
+* Implementation files
+* API/contracts involved
+* Database impact
+* Security/authorization behavior
+* Main sequence diagram
+* Demo script
+* Test evidence
+* Risks/tradeoffs
+* Q&A talking points
+
+Diagram requirements:
+
+* Include Mermaid architecture diagrams when they clarify component boundaries.
+* Include Mermaid sequence diagrams for the main user/system flow.
+* Include Mermaid data-flow diagrams when persistence, integration, or tool orchestration is central to the feature.
+
+Speaker notes:
+
+* Every slide should include a short `Speaker cue:` line.
+* Speaker cues should explain what to say live, what backend behavior to point out, and what risk/tradeoff to emphasize.
+
+Execution summary requirement:
+
+* The final execution summary must mention the feature demo slide file path when one is created or updated.
+* If no slide file is required, the execution summary must state why it was not required.
+
+Project memory requirement:
+
+* When the feature changes project state, update project memory to reference the demo slide deliverable where useful.
+* Do not place reusable slide templates in `docs/prompts/`; prompt logs remain chronological historical records only.
 
 ---
 
@@ -363,6 +421,20 @@ For execution tasks that change project state, update as applicable:
 * `docs/project/AI_HANDOFF.md`
 * `docs/project/ROADMAP.md`
 * `docs/project/NEXT_SESSION.md`
+
+Feature demo slide deliverables go in:
+
+```text
+docs/demo/features/
+```
+
+Use the naming convention:
+
+```text
+{feature-slug}-demo-slides.md
+```
+
+For main feature, major platform capability, API module, integration, or demo-worthy backend behavior executions, create or update the relevant feature demo slide file and reference it in the execution summary. If the task does not require a slide file, state why in the execution summary.
 
 Prompt logs go in:
 
