@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-06-19
+**Last Updated:** 2026-06-22
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -39,6 +39,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Instruction file consolidation (V2 rule set)
 - Prompt standardization and reusable prompt template setup (`docs/project/PROMPT_TEMPLATE.md`)
 - Prompt template compliance contract enhancement for complete short-prompt plans
+- Feature demo slide deliverable workflow (`docs/demo/features/{feature-slug}-demo-slides.md`)
 
 ---
 
@@ -307,6 +308,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 34. Assistant Intent Interpreter Phase 2
 35. Assistant LLM Provider Integration Phase 3
 36. Assistant LLM Configuration Diagnostics
+37. Feature demo slide deliverable workflow
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -330,7 +332,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was Assistant LLM Configuration Diagnostics. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Feature Demo Slide Deliverable Workflow. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 **How to Proceed:**
 
@@ -552,6 +554,8 @@ Short planning prompts must return every section from the template's Plan Output
 
 Short prompts do not override the execution lock, prompt logging, Clean Architecture, DDD, CQRS, module isolation, testing, security, or completion rules.
 
+For main features, major platform capabilities, API modules, integrations, or demo-worthy backend behavior, future approved executions must create or update `docs/demo/features/{feature-slug}-demo-slides.md`. The slide source must be presentation-ready Markdown with required sections, Mermaid diagrams where useful, and `Speaker cue:` lines. Tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, and documentation-only maintenance do not require slide files unless explicitly requested.
+
 Historical prompt logs under `docs/prompts/` must not be rewritten for style cleanup.
 
 ### Important: No Bootstrapper or Shared Projects
@@ -620,6 +624,7 @@ If build or tests fail, check:
 | Architecture Strategy | `instructions/00-role-and-stack.md#current-architecture-strategy` |
 | Execution Lock | `instructions/01-execution-and-planning.md#execution-lock` |
 | Reusable Prompt Template | `docs/project/PROMPT_TEMPLATE.md` |
+| Feature Demo Slides | `docs/demo/features/` |
 | CQRS Rules | `instructions/03-cqrs-database-testing-security.md#cqrs-rules` |
 | DDD Ownership Rules | `instructions/03-cqrs-database-testing-security.md#ddd-ownership-rules` |
 | Module Isolation | `instructions/02-architecture-and-modules.md#module-rules` |

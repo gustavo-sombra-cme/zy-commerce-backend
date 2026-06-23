@@ -68,6 +68,8 @@ Reusable prompt defaults live in `docs/project/PROMPT_TEMPLATE.md`. Use it to ex
 
 Short planning prompts must follow the template's Plan Output Contract exactly and run the Plan Self-Validation Rule before returning a plan.
 
+Feature demo slide deliverables are part of the default execution workflow. For main features, major platform capabilities, API modules, integrations, or demo-worthy backend behavior, create or update `docs/demo/features/{feature-slug}-demo-slides.md` with slide-ready Markdown, Mermaid diagrams where useful, demo script, test evidence, risks/tradeoffs, Q&A talking points, and `Speaker cue:` lines. Tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, and documentation-only maintenance do not require slide files unless explicitly requested.
+
 ## Current Implementation Notes
 
 Catalog product search uses an infrastructure read model:
@@ -176,6 +178,8 @@ After completed execution tasks, update:
 - `docs/project/ROADMAP.md`
 - `docs/project/NEXT_SESSION.md`
 
+For main/demo-worthy feature executions, also create or update the related feature demo slide source under `docs/demo/features/` and mention the path in the execution summary. Project memory should reference the slide file when the feature changes project state.
+
 Keep these files factual, concise, and aligned with the current repository.
 
 Prompt logs under `docs/prompts/` are historical records. Do not rewrite old prompt logs for template cleanup or style normalization.
@@ -222,3 +226,4 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - AGENT.md router and instruction file split
 - Prompt standardization and reusable prompt template setup
 - Prompt template compliance contract enhancement
+- Feature demo slide deliverable workflow
