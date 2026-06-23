@@ -27,6 +27,7 @@ public sealed class RegisterUserCommandHandlerTests
         Assert.Single(repository.Users);
         Assert.Equal("hashed::PlainPassword123", repository.Users[0].PasswordHash.Value);
         Assert.NotEqual("PlainPassword123", repository.Users[0].PasswordHash.Value);
+        Assert.Equal(UserRole.Customer, repository.Users[0].Role);
         Assert.True(repository.Users[0].IsActive);
         Assert.False(repository.Users[0].IsEmailVerified);
         Assert.True(unitOfWork.SaveChangesCalled);

@@ -1,8 +1,35 @@
 # Frontend Contract
 
-Last Updated: 2026-06-19
+Last Updated: 2026-06-23
 
 This file captures frontend-facing API contract details that are easy to miss from backend implementation alone.
+
+## Auth
+
+### GET /api/auth/users/me
+
+Gets the current authenticated user.
+
+Authentication:
+
+- Requires `Authorization: Bearer {accessToken}`.
+
+Response:
+
+```json
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "email": "admin@example.com",
+  "role": "Admin"
+}
+```
+
+Role values currently used by the backend:
+
+- `Customer`
+- `Admin`
+
+Frontend Admin UI should use this role for navigation/visibility, but the backend remains the source of truth. Admin-only product writes return `403 Forbidden` for authenticated non-admin users.
 
 ## Catalog
 
@@ -12,7 +39,9 @@ Creates a Catalog product.
 
 Authentication:
 
-- Requires `Authorization: Bearer {accessToken}`.
+- Requires `Authorization: Bearer {accessToken}` for an Admin user.
+- Missing/invalid token returns `401 Unauthorized`.
+- Authenticated non-admin users receive `403 Forbidden`.
 
 Request:
 
@@ -30,6 +59,79 @@ Request rules:
 - `price` is required.
 - `price` must be greater than or equal to `0`.
 - The backend stores price with two decimal places.
+- Product creation affects future Catalog reads and future Orders only. It does not change historical order line snapshots.
+
+### PUT /api/catalog/products/{productId}
+
+Updates Catalog product details.
+
+Authentication:
+
+- Requires `Authorization: Bearer {accessToken}` for an Admin user.
+- Missing/invalid token returns `401 Unauthorized`.
+- Authenticated non-admin users receive `403 Forbidden`.
+
+Request:
+
+```json
+{
+  "name": "Updated Product",
+  "description": "Updated optional description"
+}
+```
+
+Rules:
+
+- Updates name and description only.
+- Does not update SKU or price.
+- Does not rewrite historical order line snapshots.
+
+### PUT /api/catalog/products/{productId}/price
+
+Updates Catalog product price.
+
+Authentication:
+
+- Requires `Authorization: Bearer {accessToken}` for an Admin user.
+- Missing/invalid token returns `401 Unauthorized`.
+- Authenticated non-admin users receive `403 Forbidden`.
+
+Request:
+
+```json
+{
+  "price": 29.99
+}
+```
+
+Rules:
+
+- `price` is required.
+- `price` must be greater than or equal to `0`.
+- Successful update returns `204 No Content`.
+- Invalid price returns `400 Bad Request`.
+- Missing product returns `404 Not Found`.
+- Updated price affects future Catalog reads and future order snapshots only. Existing Orders keep their captured order line prices.
+
+### DELETE /api/catalog/products/{productId}
+
+Deactivates a Catalog product.
+
+Authentication:
+
+- Requires `Authorization: Bearer {accessToken}` for an Admin user.
+- Missing/invalid token returns `401 Unauthorized`.
+- Authenticated non-admin users receive `403 Forbidden`.
+
+### POST /api/catalog/products/{productId}/reactivate
+
+Reactivates a Catalog product.
+
+Authentication:
+
+- Requires `Authorization: Bearer {accessToken}` for an Admin user.
+- Missing/invalid token returns `401 Unauthorized`.
+- Authenticated non-admin users receive `403 Forbidden`.
 
 ### GET /api/catalog/products
 
@@ -210,3 +312,22 @@ Rules:
 - Provider-backed intent interpretation is optional configuration; deterministic fallback remains available.
 - Read-only only.
 - Mutating, admin, SQL, token, database, internal, unclear, and cross-user questions return `unsupported: true`.
+
+## Local Admin Setup For Development
+
+The backend does not expose a public admin registration endpoint and does not commit admin credentials.
+
+For local development only:
+
+1. Register a user through `POST /api/auth/users/register`.
+2. Promote that user directly in the local Auth database.
+
+Example SQL for LocalDB:
+
+```sql
+UPDATE auth.Users
+SET Role = 'Admin'
+WHERE Email = 'admin@example.com';
+```
+
+Then login normally through `POST /api/auth/users/login`. The returned JWT includes a `role` claim, and `GET /api/auth/users/me` returns `role`.

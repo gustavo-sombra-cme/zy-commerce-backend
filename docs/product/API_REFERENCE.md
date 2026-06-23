@@ -1,6 +1,6 @@
 # API Reference
 
-Last updated: 2026-06-19
+Last updated: 2026-06-23
 
 Base URL is environment-specific. Frontend reads it from runtime config: `../zy-commerce-frontend/src/app/core/config/runtime-config.service.ts`.
 
@@ -48,6 +48,8 @@ Response contract: `GetCurrentUserResponse.cs`.
 Notes:
 
 - Protected by bearer authentication.
+- Response includes `userId`, `email`, and `role`.
+- Role values currently used by the backend are `Customer` and `Admin`.
 - Frontend route guard calls this endpoint when a token exists but user state is not loaded.
 
 ## Implemented Catalog API
@@ -100,7 +102,9 @@ Request fields:
 
 Notes:
 
-- Protected endpoint.
+- Admin-protected endpoint. Requires bearer token with role `Admin`.
+- Missing/invalid token returns `401`.
+- Authenticated non-admin user returns `403`.
 - Price must be `>= 0`.
 - Duplicate SKU maps to conflict.
 
@@ -114,9 +118,35 @@ Request contract: `UpdateProductDetailsRequest.cs`.
 
 Notes:
 
-- Protected endpoint.
+- Admin-protected endpoint. Requires bearer token with role `Admin`.
+- Missing/invalid token returns `401`.
+- Authenticated non-admin user returns `403`.
 - Updates name and description only.
 - Does not update SKU or price.
+- Does not rewrite historical order line snapshots.
+
+### PUT /api/catalog/products/{productId}/price
+
+Status: Implemented.
+
+Reference: `ProductsController.cs`.
+
+Request contract: `UpdateProductPriceRequest.cs`.
+
+Request fields:
+
+- `price`
+
+Notes:
+
+- Admin-protected endpoint. Requires bearer token with role `Admin`.
+- Missing/invalid token returns `401`.
+- Authenticated non-admin user returns `403`.
+- Updates price only.
+- Price must be `>= 0`.
+- Successful update returns `204 No Content`.
+- Missing product maps to not found through global exception handling.
+- Price updates affect future Catalog reads and future order snapshots only; existing Orders keep historical line prices.
 
 ### DELETE /api/catalog/products/{productId}
 
@@ -126,7 +156,9 @@ Reference: `ProductsController.cs`.
 
 Notes:
 
-- Protected endpoint.
+- Admin-protected endpoint. Requires bearer token with role `Admin`.
+- Missing/invalid token returns `401`.
+- Authenticated non-admin user returns `403`.
 - Deactivates product.
 
 ### POST /api/catalog/products/{productId}/reactivate
@@ -137,7 +169,9 @@ Reference: `ProductsController.cs`.
 
 Notes:
 
-- Protected endpoint.
+- Admin-protected endpoint. Requires bearer token with role `Admin`.
+- Missing/invalid token returns `401`.
+- Authenticated non-admin user returns `403`.
 - Reactivation is idempotent when the product is already active.
 
 ## Implemented Orders API
@@ -263,7 +297,7 @@ Notes:
 
 ## Planned
 
-- Product price update endpoint is planned/candidate only.
+- Admin UI frontend integration.
 
 ## Intentionally Absent
 
@@ -272,6 +306,9 @@ Notes:
 - Customer/profile endpoints.
 - Payment/shipping APIs.
 - Inventory APIs.
+- Public admin registration endpoint.
+- MCP admin tools.
+- Assistant admin tools.
 
 ## Unknown / Not Verified
 

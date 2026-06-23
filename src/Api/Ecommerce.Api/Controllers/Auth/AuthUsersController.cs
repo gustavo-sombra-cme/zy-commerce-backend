@@ -50,12 +50,15 @@ public sealed class AuthUsersController(ISender sender) : ControllerBase
     {
         var subject = User.FindFirst("sub")?.Value;
         var email = User.FindFirst("email")?.Value;
+        var role = User.FindFirst("role")?.Value;
 
-        if (!Guid.TryParse(subject, out var userId) || string.IsNullOrWhiteSpace(email))
+        if (!Guid.TryParse(subject, out var userId)
+            || string.IsNullOrWhiteSpace(email)
+            || string.IsNullOrWhiteSpace(role))
         {
             return Unauthorized();
         }
 
-        return Ok(new GetCurrentUserResponse(userId, email));
+        return Ok(new GetCurrentUserResponse(userId, email, role));
     }
 }

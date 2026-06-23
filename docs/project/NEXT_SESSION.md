@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-06-19
+**Last Updated:** 2026-06-23
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -30,6 +30,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Assistant Intent Interpreter Phase 2 (`IAssistantIntentInterpreter`, deterministic default, untrusted plan validation, fake interpreter tests only)
 - Assistant LLM Provider Integration Phase 3 (`LlmAssistantIntentInterpreter`, config-gated provider options, HTTP client adapter, fake provider tests only)
 - Assistant LLM Configuration Diagnostics (temporary safe boolean/presence logs for LLM config, provider failure, fallback, and validation failure)
+- Backend Admin Product Management (`RequireAdmin`, Auth role claims, Admin-only Catalog writes, product price update)
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
 - JWT default authentication scheme fix
@@ -121,7 +122,7 @@ All approved projects exist and build successfully:
 - **Persistence:** SQL Server LocalDB `(localdb)\mssqllocaldb`
 - **Connection Strings:** `ConnectionStrings:Catalog`, `ConnectionStrings:Auth`, and `ConnectionStrings:Orders` in `appsettings.Development.json`
 - **Catalog Migrations:** `20260608111338_InitialCatalogSchema.cs`, `20260618090000_AddProductPrice.cs`
-- **Auth Migration:** `20260609092505_InitialAuthSchema.cs`
+- **Auth Migrations:** `20260609092505_InitialAuthSchema.cs`, `20260623090000_AddUserRole.cs`
 - **Orders Migration:** `20260612090403_InitialOrdersSchema.cs`
 - **Auth Persistence:** `EcommerceAuth` LocalDB database updated through `InitialAuthSchema`
 - **Orders Persistence:** `EcommerceOrders` LocalDB database created and updated through `InitialOrdersSchema`
@@ -177,19 +178,20 @@ Catalog/Auth/Orders (no cross-module references)
 ### Catalog Module (Complete)
 
 **Implemented Features:**
-- Create Product (POST /api/catalog/products, protected)
+- Create Product (POST /api/catalog/products, Admin-only)
 - Get Product By Id (GET /api/catalog/products/{productId})
 - Search/List Products with pagination (GET /api/catalog/products)
-- Update Product Details (PUT /api/catalog/products/{productId}, protected)
-- Deactivate Product (DELETE /api/catalog/products/{productId}, protected)
-- Reactivate Product (POST /api/catalog/products/{productId}/reactivate, protected)
+- Update Product Details (PUT /api/catalog/products/{productId}, Admin-only)
+- Update Product Price (PUT /api/catalog/products/{productId}/price, Admin-only)
+- Deactivate Product (DELETE /api/catalog/products/{productId}, Admin-only)
+- Reactivate Product (POST /api/catalog/products/{productId}/reactivate, Admin-only)
 
 **Key Decisions:**
 - Product search uses infrastructure read model (`ProductSearchReadModel`, `CatalogReadDbContext`)
 - See: `docs/decisions/ADR-001-product-search-read-model.md`
 - Do NOT revert to aggregate value object access inside EF queries
 - Product price is Catalog-owned aggregate state. Create Product accepts non-negative `price`, persists it as `decimal(18,2)`, and search/details responses return it. Update Product Details does not change price.
-- Catalog write endpoints require a valid bearer token.
+- Catalog write endpoints require a valid bearer token with role `Admin`.
 - Catalog read endpoints remain public.
 - Product reactivation is idempotent and does not update `UpdatedAt` when the product is already active.
 
@@ -202,23 +204,27 @@ Catalog/Auth/Orders (no cross-module references)
 
 **Current State:**
 - Projects exist: Domain, Application, Infrastructure, Contracts, UnitTests
-- Domain model exists: `User`, `UserId`, `Email`, `PasswordHash`
+- Domain model exists: `User`, `UserId`, `Email`, `PasswordHash`, `UserRole`
 - Domain behaviors exist: Register, VerifyEmail, ChangePassword, Deactivate, Reactivate
 - Application registration use case exists: `RegisterUserCommand`, handler, validator, result, duplicate email exception, and abstractions
 - Application login use case exists: `LoginUserCommand`, handler, validator, result, invalid credentials exception, inactive user exception, and abstractions
 - Infrastructure support exists: `AuthDbContext`, `UserConfiguration`, `UserRepository`, `PasswordHasher`, and DI registration
 - JWT access token support exists: `IAccessTokenGenerator`, `AccessTokenResult`, `JwtOptions`, `JwtAccessTokenGenerator`
+- JWT tokens include a `role` claim and registered users default to role `Customer`.
+- Local Admin users are promoted through documented development database update only; no public admin registration endpoint exists.
 - JWT bearer validation is configured in the API using existing `Auth:Jwt` settings, with explicit default authenticate and challenge schemes
 - Authentication and authorization middleware are registered
 - Swagger/OpenAPI uses the standard HTTP bearer scheme and per-operation security metadata for `[Authorize]` actions. Enter the raw JWT access token in Swagger Authorize; Swagger UI sends `Authorization: Bearer {token}`. Swagger UI authorization persistence is enabled.
 - Contracts exist: `RegisterUserRequest`, `RegisterUserResponse`, `LoginUserRequest`, `LoginUserResponse`, `GetCurrentUserResponse`
+- `GetCurrentUserResponse` returns `userId`, `email`, and `role`.
 - API endpoints exist: `POST /api/auth/users/register`, `POST /api/auth/users/login`, `GET /api/auth/users/me`
 - Manual Auth migration exists: `20260609092505_InitialAuthSchema.cs`
 
 **Intentionally Absent:**
 - Refresh token strategy
-- Roles/permissions
 - Token persistence
+- Public admin registration endpoint
+- Broader permissions beyond Customer/Admin
 
 Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
@@ -307,6 +313,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 34. Assistant Intent Interpreter Phase 2
 35. Assistant LLM Provider Integration Phase 3
 36. Assistant LLM Configuration Diagnostics
+37. Backend Admin Product Management
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -330,7 +337,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was Assistant LLM Configuration Diagnostics. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Backend Admin Product Management. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 **How to Proceed:**
 
@@ -406,13 +413,13 @@ All architecture, planning, execution, testing, and documentation work must be l
 
 ### Important: Auth Has Access Tokens And /me Only
 
-The Auth module can register users through `POST /api/auth/users/register`, verify credentials through `POST /api/auth/users/login`, and return the current authenticated user through `GET /api/auth/users/me`. Login returns a short-lived JWT access token. The `/me` endpoint requires a valid bearer token and returns only `userId` and `email`. Catalog product write endpoints require a valid bearer token; Catalog product read endpoints remain public. Swagger has an Authorize button for JWT access tokens; enter the raw JWT access token and Swagger UI sends `Authorization: Bearer {token}`. If Swagger-generated curl lacks the `Authorization` header, restart the API process and refresh Swagger because the running process may be serving stale OpenAPI JSON.
+The Auth module can register users through `POST /api/auth/users/register`, verify credentials through `POST /api/auth/users/login`, and return the current authenticated user through `GET /api/auth/users/me`. Login returns a short-lived JWT access token with a `role` claim. The `/me` endpoint requires a valid bearer token and returns `userId`, `email`, and `role`. Catalog product write endpoints require a valid Admin bearer token through the `RequireAdmin` policy; Catalog product read endpoints remain public. Swagger has an Authorize button for JWT access tokens; enter the raw JWT access token and Swagger UI sends `Authorization: Bearer {token}`. If generated Swagger curl lacks the `Authorization` header, restart the API process and refresh Swagger because the running process may be serving stale OpenAPI JSON.
 
 Do NOT add:
 - Refresh tokens
-- Roles or permissions
 - Protected Catalog read endpoints
 - Token persistence
+- Public admin registration endpoint
 
 Wait for explicit architectural approval before auth business features.
 

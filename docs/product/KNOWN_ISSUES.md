@@ -1,6 +1,6 @@
 # Known Issues and Gaps
 
-Last updated: 2026-06-19
+Last updated: 2026-06-23
 
 ## Implemented Constraints
 
@@ -21,8 +21,7 @@ Last updated: 2026-06-19
 ## Planned / Future Work
 
 - Orders product snapshot data can be spoofed until Catalog validation/integration is approved. Reference: `docs/decisions/ADR-002-orders-product-snapshot-strategy.md`.
-- Product price update command/endpoints are not implemented.
-- Auth refresh tokens, roles/permissions, and token persistence are not implemented.
+- Auth refresh tokens, broader permissions beyond Customer/Admin, public admin registration, and token persistence are not implemented.
 - Integration testing setup is not implemented.
 - Frontend integration with backend `POST /api/assistant/query` is not implemented in this backend slice.
 - External LLM-backed assistant orchestration is not implemented.
@@ -36,6 +35,7 @@ Last updated: 2026-06-19
 - No frontend AI provider secrets or direct browser AI provider calls.
 - No assistant mutating actions, raw SQL, admin analytics, or cross-user analysis.
 - No MCP use for login/register.
+- No MCP or Assistant admin tools.
 
 ## Unknown / Not Verified
 

@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-06-19
+Last updated: 2026-06-23
 
 ## Implemented
 
@@ -16,6 +16,7 @@ Backend:
 - Swagger/OpenAPI for local Development.
 - Protected MCP endpoint with allowlisted tools.
 - Protected deterministic backend assistant endpoint for read-only Catalog/Orders questions.
+- Backend Admin Product Management with Customer/Admin role support, Admin-only Catalog writes, and product price update.
 
 Frontend:
 
@@ -44,7 +45,6 @@ Near-term candidates:
 
 - Frontend integration with backend assistant endpoint.
 - External LLM provider integration behind the existing assistant orchestration boundary.
-- Product price update command/endpoints.
 - Orders Catalog validation/integration for product snapshots.
 - Integration testing setup for backend/API/frontend workflows.
 - Frontend/backend contract alignment for Catalog optional fields.

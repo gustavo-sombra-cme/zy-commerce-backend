@@ -26,8 +26,8 @@ The backend is a Clean Architecture modular monolith on .NET 9.
 
 Current modules:
 
-- Catalog: implemented product features; write endpoints require bearer authentication and read endpoints remain public
-- Auth: Register User, Login User, JWT access token generation, JWT bearer validation, and protected Current User endpoint implemented through API and persistence
+- Catalog: implemented product features; write endpoints require Admin bearer authorization and read endpoints remain public
+- Auth: Register User, Login User, JWT access token generation with role claims, JWT bearer validation, Customer/Admin role persistence, and protected Current User endpoint implemented through API and persistence
 - Orders: Create Order, List Orders For Current User, and Get Order By Id implemented with product snapshots and owner-scoped reads
 - Platform/API: health checks expose process liveness and Auth/Catalog/Orders database readiness; structured logging uses `X-Correlation-ID`; MCP exposes a protected allowlisted tool surface; the assistant endpoint exposes read-only Catalog/Orders orchestration with deterministic default intent interpretation, config-gated LLM interpretation, and validated untrusted intent plans
 
@@ -55,7 +55,7 @@ Do not create these unless explicitly approved:
 - migrations
 - database schema changes
 - API endpoints
-- Auth refresh-token, roles, permissions, protected Catalog read endpoint, or token persistence behavior
+- Auth refresh-token, protected Catalog read endpoint, token persistence behavior, public admin registration endpoint, or broader permission model
 - Customers module
 
 Prompt logging is required before execution unless the user writes `SKIP PROMPT LOG`.
@@ -83,9 +83,9 @@ Do not revert product search back to aggregate value object access inside EF que
 
 Catalog has two manual migrations for the product schema: `InitialCatalogSchema` and `AddProductPrice`. Do not add migrations without explicit approval.
 
-Catalog supports Create Product, Get Product By Id, Search/List Products, Update Product Details, Deactivate Product, and Reactivate Product. Create Product accepts non-negative `price`, stores it on the Product aggregate with `decimal(18,2)` persistence, and Catalog search/details responses return `price`. Catalog write endpoints are protected; Catalog `GET` endpoints remain public. Update Product Details changes name and description only, preserves SKU and price, updates `UpdatedAt`, and does not require a migration. Reactivate Product is idempotent: an inactive product becomes active and updates `UpdatedAt`; an already active product returns success without changing state or updating `UpdatedAt`.
+Catalog supports Create Product, Get Product By Id, Search/List Products, Update Product Details, Update Product Price, Deactivate Product, and Reactivate Product. Create Product accepts non-negative `price`, stores it on the Product aggregate with `decimal(18,2)` persistence, and Catalog search/details responses return `price`. Catalog write endpoints require the API `RequireAdmin` policy; Catalog `GET` endpoints remain public. Update Product Details changes name and description only, preserves SKU and price, and updates `UpdatedAt`. Update Product Price changes price only, preserves historical Orders snapshots, and updates `UpdatedAt`. Reactivate Product is idempotent: an inactive product becomes active and updates `UpdatedAt`; an already active product returns success without changing state or updating `UpdatedAt`.
 
-Auth has a `User` aggregate with `UserId`, `Email`, and `PasswordHash` value objects. Register User is wired through `POST /api/auth/users/register`. Login User is wired through `POST /api/auth/users/login` and returns `userId`, `email`, `accessToken`, `tokenType`, and `expiresAt`. JWT bearer authentication is configured in the API with explicit default authenticate and challenge schemes, and `GET /api/auth/users/me` is protected with `[Authorize]` and returns `userId` and `email` from the token claims. Swagger uses the standard HTTP bearer scheme with per-operation security metadata for `[Authorize]` actions; enter the raw JWT access token in the Authorize field and Swagger UI sends `Authorization: Bearer {token}`. Swagger UI authorization persistence is enabled. If generated Swagger curl lacks the `Authorization` header, restart the running API process and refresh Swagger because stale Swagger JSON may be served. Avoid adding refresh tokens, roles, permissions, protected Catalog read endpoints, token persistence, or Customers integration until approved.
+Auth has a `User` aggregate with `UserId`, `Email`, `PasswordHash`, and `UserRole`. Register User is wired through `POST /api/auth/users/register` and defaults new users to `Customer`. Login User is wired through `POST /api/auth/users/login` and returns `userId`, `email`, `accessToken`, `tokenType`, and `expiresAt`; the JWT includes a `role` claim. JWT bearer authentication is configured in the API with explicit default authenticate/challenge schemes and `RoleClaimType = "role"`. `GET /api/auth/users/me` is protected with `[Authorize]` and returns `userId`, `email`, and `role` from token claims. Swagger uses the standard HTTP bearer scheme with per-operation security metadata for `[Authorize]` actions; enter the raw JWT access token in the Authorize field and Swagger UI sends `Authorization: Bearer {token}`. Swagger UI authorization persistence is enabled. If generated Swagger curl lacks the `Authorization` header, restart the running API process and refresh Swagger because stale Swagger JSON may be served. Avoid adding refresh tokens, token persistence, public admin registration, protected Catalog read endpoints, or Customers integration until approved.
 
 Platform health checks are API-only:
 
@@ -217,6 +217,7 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - Assistant Intent Interpreter Phase 2
 - Assistant LLM Provider Integration Phase 3
 - Assistant LLM Configuration Diagnostics
+- Backend Admin Product Management
 - MCP Server Integration
 - AI project memory documentation
 - AGENT.md router and instruction file split

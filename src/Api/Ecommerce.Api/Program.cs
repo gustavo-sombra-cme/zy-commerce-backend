@@ -4,6 +4,8 @@ using Ecommerce.Api.HealthChecks;
 using Ecommerce.Api.Middleware;
 using Ecommerce.Api.Mcp;
 using Ecommerce.Api.OpenApi;
+using Ecommerce.Api.Security;
+using Ecommerce.Auth.Domain.Users;
 using Ecommerce.Auth.Application.DependencyInjection;
 using Ecommerce.Auth.Infrastructure.DependencyInjection;
 using Ecommerce.Auth.Infrastructure.Persistence;
@@ -124,11 +126,19 @@ builder.Services
             ValidateLifetime = true,
             RequireSignedTokens = true,
             RequireExpirationTime = true,
+            RoleClaimType = "role",
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.RequireAdmin, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(UserRole.Admin.ToString());
+    });
+});
 
 builder.Services
     .AddMcpServer()

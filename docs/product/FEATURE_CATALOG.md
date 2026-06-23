@@ -1,18 +1,19 @@
 # Feature Catalog
 
-Last updated: 2026-06-19
+Last updated: 2026-06-23
 
 ## Implemented
 
 ### Backend Catalog
 
-- Create product: protected `POST /api/catalog/products`; command/handler/validator in `CreateProduct`.
+- Create product: Admin-only `POST /api/catalog/products`; command/handler/validator in `CreateProduct`.
 - Product price on create: `CreateProductRequest.Price`, `CreateProductCommand.Price`, `Product.Price`, migration `AddProductPrice`.
 - Product details: public `GET /api/catalog/products/{productId}`.
 - Product search/list: public `GET /api/catalog/products` with `searchTerm`, `isActive`, `pageNumber`, `pageSize`.
-- Update details: protected `PUT /api/catalog/products/{productId}` for name/description only.
-- Deactivate: protected `DELETE /api/catalog/products/{productId}`.
-- Reactivate: protected `POST /api/catalog/products/{productId}/reactivate`.
+- Update details: Admin-only `PUT /api/catalog/products/{productId}` for name/description only.
+- Update price: Admin-only `PUT /api/catalog/products/{productId}/price`.
+- Deactivate: Admin-only `DELETE /api/catalog/products/{productId}`.
+- Reactivate: Admin-only `POST /api/catalog/products/{productId}/reactivate`.
 
 References: `src/Api/Ecommerce.Api/Controllers/Catalog/ProductsController.cs`, `src/Modules/Catalog/Ecommerce.Catalog.Application/Products`, `tests/UnitTests/Ecommerce.Catalog.UnitTests/Products`.
 
@@ -22,6 +23,7 @@ References: `src/Api/Ecommerce.Api/Controllers/Catalog/ProductsController.cs`, `
 - Login user: `POST /api/auth/users/login`.
 - Current user: protected `GET /api/auth/users/me`.
 - JWT access token generation and bearer validation.
+- Customer/Admin role persistence and JWT `role` claim.
 
 References: `src/Api/Ecommerce.Api/Controllers/Auth/AuthUsersController.cs`, `src/Modules/Auth/Ecommerce.Auth.Application/Users`, `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Security`.
 
@@ -82,7 +84,6 @@ References: `../zy-commerce-frontend/src/app/features/catalog`, `../zy-commerce-
 
 - Frontend integration with backend assistant endpoint.
 - External LLM provider integration behind the existing backend assistant safety boundary.
-- Catalog price update endpoint/command.
 - Orders Catalog validation/integration.
 - Auth refresh token strategy.
 - Additional MCP policies/rate limiting.
@@ -94,7 +95,7 @@ References: `docs/project/ROADMAP.md`, `docs/decisions/ADR-004-assistant-orchest
 
 - Inventory, Customers, Payments, Shipping, Promotions, Reviews, Notifications, Audit.
 - Payments, inventory reservation, discounts/coupons, refunds, cancellation, advanced order status.
-- Auth roles/permissions, refresh tokens, token persistence.
+- Auth broader permissions, refresh tokens, token persistence, public admin registration.
 - Protected Catalog reads.
 
 ## Unknown / Not Verified
