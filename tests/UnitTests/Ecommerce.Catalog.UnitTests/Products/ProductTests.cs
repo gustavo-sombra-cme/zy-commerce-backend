@@ -163,6 +163,49 @@ public sealed class ProductTests
     }
 
     [Fact]
+    public void UpdatePrice_WithValidPrice_UpdatesPriceAndUpdatedAt()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            12.34m,
+            DateTimeOffset.UtcNow);
+        var updatedAt = DateTimeOffset.UtcNow.AddMinutes(1);
+
+        product.UpdatePrice(19.999m, updatedAt);
+
+        Assert.Equal(20.00m, product.Price);
+        Assert.Equal(updatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public void UpdatePrice_WithNegativePrice_Throws()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            12.34m,
+            DateTimeOffset.UtcNow);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => product.UpdatePrice(-0.01m, DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void UpdatePrice_WithDefaultUpdatedAt_Throws()
+    {
+        var product = Product.Create(
+            Sku.Create("SKU-001"),
+            ProductName.Create("Test Product"),
+            null,
+            12.34m,
+            DateTimeOffset.UtcNow);
+
+        Assert.Throws<ArgumentException>(() => product.UpdatePrice(19.99m, default));
+    }
+
+    [Fact]
     public void Reactivate_WithInactiveProduct_SetsActiveAndUpdatedAt()
     {
         var product = Product.Create(

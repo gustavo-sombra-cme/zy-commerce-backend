@@ -17,10 +17,35 @@ public sealed class UserTests
         Assert.Equal(userId, user.Id);
         Assert.Equal(email, user.Email);
         Assert.Equal(passwordHash, user.PasswordHash);
+        Assert.Equal(UserRole.Customer, user.Role);
         Assert.True(user.IsActive);
         Assert.False(user.IsEmailVerified);
         Assert.Equal(createdAt, user.CreatedAt);
         Assert.Null(user.UpdatedAt);
+    }
+
+    [Fact]
+    public void Register_WithAdminRole_CreatesAdminUser()
+    {
+        var user = User.Register(
+            UserId.New(),
+            Email.Create("admin@example.com"),
+            PasswordHash.Create("hash-value"),
+            UserRole.Admin,
+            DateTimeOffset.UtcNow);
+
+        Assert.Equal(UserRole.Admin, user.Role);
+    }
+
+    [Fact]
+    public void Register_WithInvalidRole_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => User.Register(
+            UserId.New(),
+            Email.Create("user@example.com"),
+            PasswordHash.Create("hash-value"),
+            (UserRole)999,
+            DateTimeOffset.UtcNow));
     }
 
     [Fact]

@@ -56,6 +56,7 @@ Implemented product capabilities:
 - Get Product By Id
 - Search/List Products with pagination
 - Update Product Details
+- Update Product Price
 - Deactivate Product
 - Reactivate Product
 
@@ -73,7 +74,7 @@ Catalog uses:
 
 ### Auth
 
-Auth has Register User, Login User, JWT access token generation, JWT bearer validation, and a protected Current User endpoint implemented through Domain, Application, Infrastructure, Contracts, and API. Login verifies credentials and returns user identity plus a short-lived JWT access token.
+Auth has Register User, Login User, JWT access token generation, JWT bearer validation, Admin/Customer role support, and a protected Current User endpoint implemented through Domain, Application, Infrastructure, Contracts, and API. Login verifies credentials and returns user identity plus a short-lived JWT access token that includes a `role` claim.
 
 Current Auth projects:
 
@@ -89,6 +90,7 @@ Implemented Auth domain model:
 - `UserId` value object
 - `Email` value object
 - `PasswordHash` value object
+- `UserRole` enum
 
 Implemented Auth domain behaviors:
 
@@ -145,18 +147,20 @@ Implemented Auth API behavior:
 - `401 Unauthorized` on invalid credentials
 - `403 Forbidden` on inactive user
 - JWT bearer authentication middleware
+- JWT role claim generation using `role`
+- `RequireAdmin` authorization policy in the API
 - Explicit JWT `DefaultAuthenticateScheme` and `DefaultChallengeScheme`
 - Authorization services and middleware
 - `GET /api/auth/users/me`
 - `GetCurrentUserResponse`
-- `200 OK` with `userId` and `email` from JWT claims for valid bearer tokens
+- `200 OK` with `userId`, `email`, and `role` from JWT claims for valid bearer tokens
 - `401 Unauthorized` for missing or invalid bearer tokens
 
 Auth intentionally does not contain:
 
 - refresh tokens
-- roles or permissions
 - token persistence
+- public admin registration endpoint
 
 ### Orders
 
@@ -210,12 +214,13 @@ Catalog endpoints are implemented through controllers under:
 
 Current product routes:
 
-- `POST /api/catalog/products` - protected, requires valid bearer token
+- `POST /api/catalog/products` - admin-protected, requires valid bearer token with `Admin` role
 - `GET /api/catalog/products/{productId}`
 - `GET /api/catalog/products`
-- `PUT /api/catalog/products/{productId}` - protected, requires valid bearer token
-- `DELETE /api/catalog/products/{productId}` - protected, requires valid bearer token
-- `POST /api/catalog/products/{productId}/reactivate` - protected, requires valid bearer token
+- `PUT /api/catalog/products/{productId}` - admin-protected, requires valid bearer token with `Admin` role
+- `PUT /api/catalog/products/{productId}/price` - admin-protected, requires valid bearer token with `Admin` role
+- `DELETE /api/catalog/products/{productId}` - admin-protected, requires valid bearer token with `Admin` role
+- `POST /api/catalog/products/{productId}/reactivate` - admin-protected, requires valid bearer token with `Admin` role
 
 Current Auth routes:
 
@@ -300,6 +305,7 @@ Catalog has EF Core persistence and two approved migrations:
 Auth has EF Core persistence and one approved migration:
 
 - `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Persistence/Migrations/20260609092505_InitialAuthSchema.cs`
+- `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Persistence/Migrations/20260623090000_AddUserRole.cs`
 
 Orders has EF Core persistence and one approved migration:
 
@@ -595,6 +601,21 @@ Latest code execution after Assistant LLM Configuration Diagnostics:
 - Orders unit tests: 23 passed
 - Architecture tests: 88 passed
 
+Latest code execution after Backend Admin Product Management:
+
+- Added Auth-owned `UserRole` support with default `Customer` registration and persisted `Users.Role`.
+- Added Auth migration `AddUserRole`.
+- JWT access tokens now include a `role` claim and API authorization uses `RoleClaimType = "role"`.
+- `GET /api/auth/users/me` now returns `role`.
+- Added API `RequireAdmin` policy.
+- Catalog write endpoints now require Admin role; Catalog read endpoints remain public.
+- Added `PUT /api/catalog/products/{productId}/price` for Admin-only price updates.
+- Added Catalog `Product.UpdatePrice`, CQRS command/handler/validator, and contract request.
+- Documented safe local Admin promotion through development database update only; no public admin registration endpoint or committed credentials were added.
+- MCP and Assistant allowlists were not expanded with admin tools.
+- Added `docs/demo/features/admin-product-management-demo-slides.md`.
+- Verification results are recorded in the task execution summary.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:
@@ -609,6 +630,6 @@ The repository intentionally does not currently include:
 - Customers module
 - Inventory module
 - payments, inventory reservation, shipping, discounts, coupons, order cancellation, refunds, advanced order status workflows, and Customer profile integration
-- Auth refresh token, roles, permissions, protected Catalog read endpoint, or token persistence features
+- Auth refresh token, protected Catalog read endpoint, token persistence features, public admin registration endpoint, or admin management UI
 - MCP tools beyond the approved initial allowlist
 - committed LLM API keys/secrets, provider SDK packages, live provider calls in tests, assistant write actions, assistant raw SQL/database access, assistant admin analytics, or assistant cross-user access

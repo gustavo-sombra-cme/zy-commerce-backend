@@ -481,7 +481,7 @@ Unless explicitly approved:
 * API endpoints
 * Package additions
 * Refresh tokens
-* Roles or permissions
+* Broader permissions beyond current Customer/Admin role support
 * Token persistence
 * Customers module
 * Protected Catalog read endpoints

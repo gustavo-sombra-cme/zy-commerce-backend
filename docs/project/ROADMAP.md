@@ -31,6 +31,7 @@
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
 - JWT default authentication scheme fix
+- Backend Admin Product Management
 - Catalog Reactivate Product
 - Catalog Product Price Write Support
 - Platform Health Checks
@@ -72,8 +73,6 @@ Potential future work:
 
 - Product uniqueness hardening
 - Integration tests for API and persistence
-- Product price update command/endpoints
-- Authorization policy refinement for Catalog writes
 - Additional read models if query needs grow
 
 Not currently started:
@@ -86,18 +85,19 @@ Not currently started:
 
 ## Auth Candidates
 
-Auth currently has Register User and Login User implemented through API and persistence. Login returns a short-lived JWT access token and no refresh token. JWT bearer validation is configured, and `GET /api/auth/users/me` is protected and returns the current user's id and email from token claims.
+Auth currently has Register User and Login User implemented through API and persistence. Login returns a short-lived JWT access token with a `role` claim and no refresh token. JWT bearer validation is configured, Customer/Admin role persistence exists, and `GET /api/auth/users/me` is protected and returns the current user's id, email, and role from token claims.
 
 Potential future phases:
 
 - Refresh token strategy
-- Protected endpoint authorization policy strategy beyond the current Auth `/me` endpoint
+- Admin user management strategy
+- Broader permission model beyond Customer/Admin if needed
 
 Not currently started:
 
 - refresh tokens
-- roles or permissions
 - token persistence
+- public admin registration endpoint
 
 ## Orders Candidates
 

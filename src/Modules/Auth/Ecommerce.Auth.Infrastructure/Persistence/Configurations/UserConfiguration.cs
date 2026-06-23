@@ -36,6 +36,12 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("PasswordHash")
             .IsRequired();
 
+        builder.Property(user => user.Role)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .HasDefaultValue(UserRole.Customer)
+            .IsRequired();
+
         builder.Property(user => user.IsActive)
             .IsRequired();
 

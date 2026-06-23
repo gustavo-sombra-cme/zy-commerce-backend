@@ -1,6 +1,6 @@
 # Demo Script
 
-Last updated: 2026-06-19
+Last updated: 2026-06-23
 
 These scripts describe demo flows from implemented source. They were not executed during this documentation-only task.
 
@@ -59,6 +59,46 @@ Steps:
 5. Confirm product details include name, SKU, description, active state, and price when supplied by backend.
 6. Add the product to the cart.
 7. Confirm cart state stores product id, quantity, and display snapshot fields.
+
+## Demo 2A: Admin Product Management
+
+Status: Implemented backend behavior.
+
+Backend references:
+
+- `src/Api/Ecommerce.Api/Controllers/Catalog/ProductsController.cs`
+- `src/Modules/Auth/Ecommerce.Auth.Domain/Users/UserRole.cs`
+- `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Security/JwtAccessTokenGenerator.cs`
+- `src/Modules/Catalog/Ecommerce.Catalog.Application/Products/UpdateProductPrice`
+- `docs/demo/features/admin-product-management-demo-slides.md`
+
+Frontend references:
+
+- Planned Admin UI product management page.
+
+Steps:
+
+1. Register or identify a local user.
+2. Promote that user to Admin in the local development Auth database:
+
+```sql
+UPDATE auth.Users
+SET Role = 'Admin'
+WHERE Email = 'admin@example.com';
+```
+
+3. Login as the Admin user.
+4. Confirm the JWT includes `role: Admin`.
+5. Call `GET /api/auth/users/me` and confirm `role` is `Admin`.
+6. Create a product through `POST /api/catalog/products`.
+7. Update product details through `PUT /api/catalog/products/{productId}`.
+8. Update product price through `PUT /api/catalog/products/{productId}/price`.
+9. Deactivate the product through `DELETE /api/catalog/products/{productId}`.
+10. Reactivate the product through `POST /api/catalog/products/{productId}/reactivate`.
+11. Login as a normal Customer user and confirm product writes return `403 Forbidden`.
+12. Call product write endpoints without a token and confirm `401 Unauthorized`.
+13. Confirm public Catalog reads still work without a token.
+14. Confirm product updates affect future Catalog reads/orders only and do not rewrite historical order line snapshots.
 
 ## Demo 3: Cart and Checkout
 

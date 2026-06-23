@@ -1,6 +1,6 @@
 # Product Requirements
 
-Last updated: 2026-06-19
+Last updated: 2026-06-23
 
 Source repositories:
 
@@ -17,14 +17,14 @@ Source repositories:
 
 ### Catalog
 
-- Backend supports product create, get by id, search/list, update details, deactivate, and reactivate. References: `src/Api/Ecommerce.Api/Controllers/Catalog/ProductsController.cs`, `src/Modules/Catalog/Ecommerce.Catalog.Application/Products`.
+- Backend supports Admin-only product create, update details, update price, deactivate, reactivate, and public get by id/search/list. References: `src/Api/Ecommerce.Api/Controllers/Catalog/ProductsController.cs`, `src/Modules/Catalog/Ecommerce.Catalog.Application/Products`.
 - Catalog product create accepts non-negative `price`, stores it on the Product aggregate, persists `decimal(18,2)`, and returns price from search/details. References: `src/Modules/Catalog/Ecommerce.Catalog.Domain/Products/Product.cs`, `src/Modules/Catalog/Ecommerce.Catalog.Contracts/Products/CreateProductRequest.cs`, `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260618090000_AddProductPrice.cs`.
 - Catalog search uses an infrastructure read model to preserve DDD value objects while keeping server-side filtering. References: `docs/decisions/ADR-001-product-search-read-model.md`, `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Products/ProductSearchReadModel.cs`.
 - Frontend has Catalog browse/search and product details routes and API client support. References: `../zy-commerce-frontend/src/app/features/catalog/catalog.routes.ts`, `../zy-commerce-frontend/src/app/features/catalog/product-details.routes.ts`, `../zy-commerce-frontend/src/app/features/catalog/data/catalog-api.client.ts`.
 
 ### Auth
 
-- Backend supports register, login, JWT access-token generation, JWT bearer validation, and current-user lookup. References: `src/Api/Ecommerce.Api/Controllers/Auth/AuthUsersController.cs`, `src/Modules/Auth/Ecommerce.Auth.Application/Users`, `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Security`.
+- Backend supports register, login, JWT access-token generation with role claim, JWT bearer validation, Customer/Admin role persistence, and current-user lookup. References: `src/Api/Ecommerce.Api/Controllers/Auth/AuthUsersController.cs`, `src/Modules/Auth/Ecommerce.Auth.Application/Users`, `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Security`.
 - Frontend supports REST-only login, register, current-user loading, session state, token storage abstraction, and protected route guards. References: `../zy-commerce-frontend/src/app/core/auth/auth-api.client.ts`, `../zy-commerce-frontend/src/app/core/auth/auth-session.service.ts`, `../zy-commerce-frontend/src/app/core/auth/auth.guard.ts`.
 
 ### Cart and Checkout
@@ -58,13 +58,12 @@ Source repositories:
 
 ## Planned
 
-- Product price update command/endpoints are roadmap candidates. Reference: `docs/project/ROADMAP.md`.
 - Orders Catalog validation/integration is a candidate to reduce product snapshot spoofing risk. References: `docs/decisions/ADR-002-orders-product-snapshot-strategy.md`, `docs/project/ROADMAP.md`.
 - Auth refresh tokens, broader auth policies, integration testing, API versioning, configuration validation, MCP policy/rate limiting, assistant frontend integration, and external LLM-backed assistant orchestration remain future candidates. References: `docs/project/ROADMAP.md`, `docs/project/NEXT_SESSION.md`.
 
 ## Intentionally Absent
 
-- Backend intentionally lacks microservices, event bus, distributed transactions, startup auto-migrations, Docker setup, Customers, Inventory, payments, shipping, discounts/coupons, order cancellation/refunds, advanced order status workflow, Auth refresh tokens, roles/permissions, token persistence, and Catalog protected reads. Reference: `docs/project/PROJECT_STATUS.md`.
+- Backend intentionally lacks microservices, event bus, distributed transactions, startup auto-migrations, Docker setup, Customers, Inventory, payments, shipping, discounts/coupons, order cancellation/refunds, advanced order status workflow, Auth refresh tokens, broader permissions beyond Customer/Admin, token persistence, public admin registration, and Catalog protected reads. Reference: `docs/project/PROJECT_STATUS.md`.
 - Backend assistant intentionally lacks mutating actions, raw SQL access, cross-user access, admin analytics, and external LLM provider integration in Phase 1. Reference: `docs/decisions/ADR-004-assistant-orchestration-boundary-and-safety.md`.
 - Frontend must not use MCP for login/register and must not store secrets in runtime config. References: `../zy-commerce-frontend/docs/project/REST_MCP_BOUNDARIES.md`, `../zy-commerce-frontend/docs/project/SECURITY.md`.
 

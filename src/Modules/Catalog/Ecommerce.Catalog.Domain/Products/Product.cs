@@ -90,6 +90,17 @@ public sealed class Product
         UpdatedAt = updatedAt;
     }
 
+    public void UpdatePrice(decimal price, DateTimeOffset updatedAt)
+    {
+        if (updatedAt == default)
+        {
+            throw new ArgumentException("Updated timestamp is required.", nameof(updatedAt));
+        }
+
+        Price = NormalizePrice(price);
+        UpdatedAt = updatedAt;
+    }
+
     private static string? NormalizeDescription(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))

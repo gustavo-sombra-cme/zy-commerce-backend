@@ -3,6 +3,7 @@ using Ecommerce.Api.Controllers.Auth;
 using Ecommerce.Api.Controllers.Assistant;
 using Ecommerce.Api.Controllers.Catalog;
 using Ecommerce.Api.Controllers.Orders;
+using Ecommerce.Api.Security;
 using Ecommerce.Orders.Contracts.Orders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,13 +15,14 @@ public sealed class ApiAuthorizationTests
     [Theory]
     [InlineData(nameof(ProductsController.CreateProduct))]
     [InlineData(nameof(ProductsController.UpdateProductDetails))]
+    [InlineData(nameof(ProductsController.UpdateProductPrice))]
     [InlineData(nameof(ProductsController.DeactivateProduct))]
     [InlineData(nameof(ProductsController.ReactivateProduct))]
-    public void CatalogWriteEndpoints_ShouldRequireAuthorization(string actionName)
+    public void CatalogWriteEndpoints_ShouldRequireAdminAuthorization(string actionName)
     {
         var method = GetAction(typeof(ProductsController), actionName);
 
-        Assert.True(HasAuthorizeAttribute(method), $"{actionName} should require authorization.");
+        Assert.Equal(AuthorizationPolicies.RequireAdmin, GetAuthorizePolicy(method));
     }
 
     [Theory]
@@ -73,6 +75,7 @@ public sealed class ApiAuthorizationTests
     [Theory]
     [InlineData(nameof(ProductsController.CreateProduct), typeof(HttpPostAttribute))]
     [InlineData(nameof(ProductsController.UpdateProductDetails), typeof(HttpPutAttribute))]
+    [InlineData(nameof(ProductsController.UpdateProductPrice), typeof(HttpPutAttribute))]
     [InlineData(nameof(ProductsController.DeactivateProduct), typeof(HttpDeleteAttribute))]
     [InlineData(nameof(ProductsController.ReactivateProduct), typeof(HttpPostAttribute))]
     public void CatalogProtectedEndpoints_ShouldUseExpectedHttpMethods(string actionName, Type attributeType)
@@ -138,5 +141,17 @@ public sealed class ApiAuthorizationTests
     {
         return method.GetCustomAttributes<AuthorizeAttribute>(inherit: true).Any()
             || method.DeclaringType?.GetCustomAttributes<AuthorizeAttribute>(inherit: true).Any() == true;
+    }
+
+    private static string? GetAuthorizePolicy(MethodInfo method)
+    {
+        var methodAuthorize = method.GetCustomAttributes<AuthorizeAttribute>(inherit: true).SingleOrDefault();
+
+        if (methodAuthorize is not null)
+        {
+            return methodAuthorize.Policy;
+        }
+
+        return method.DeclaringType?.GetCustomAttributes<AuthorizeAttribute>(inherit: true).SingleOrDefault()?.Policy;
     }
 }

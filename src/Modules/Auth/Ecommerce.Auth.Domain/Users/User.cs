@@ -6,11 +6,12 @@ public sealed class User
     {
     }
 
-    private User(UserId id, Email email, PasswordHash passwordHash, DateTimeOffset createdAt)
+    private User(UserId id, Email email, PasswordHash passwordHash, UserRole role, DateTimeOffset createdAt)
     {
         Id = id;
         Email = email;
         PasswordHash = passwordHash;
+        Role = role;
         IsActive = true;
         IsEmailVerified = false;
         CreatedAt = createdAt;
@@ -22,6 +23,8 @@ public sealed class User
 
     public PasswordHash PasswordHash { get; private set; }
 
+    public UserRole Role { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public bool IsEmailVerified { get; private set; }
@@ -30,11 +33,19 @@ public sealed class User
 
     public DateTimeOffset? UpdatedAt { get; private set; }
 
-    public static User Register(UserId id, Email email, PasswordHash passwordHash, DateTimeOffset createdAt)
+    public static User Register(UserId id, Email email, PasswordHash passwordHash, DateTimeOffset createdAt) =>
+        Register(id, email, passwordHash, UserRole.Customer, createdAt);
+
+    public static User Register(UserId id, Email email, PasswordHash passwordHash, UserRole role, DateTimeOffset createdAt)
     {
         if (id.Value == Guid.Empty)
         {
             throw new ArgumentException("User id cannot be empty.", nameof(id));
+        }
+
+        if (!Enum.IsDefined(role))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role), "User role is invalid.");
         }
 
         if (createdAt == default)
@@ -42,7 +53,7 @@ public sealed class User
             throw new ArgumentException("Created timestamp is required.", nameof(createdAt));
         }
 
-        return new User(id, email, passwordHash, createdAt);
+        return new User(id, email, passwordHash, role, createdAt);
     }
 
     public void VerifyEmail(DateTimeOffset updatedAt)
