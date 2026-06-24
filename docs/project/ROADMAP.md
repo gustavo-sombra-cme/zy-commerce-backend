@@ -157,7 +157,7 @@ Potential future phases:
 - Gemini POC demo validation against account/project-specific free-tier and rate-limit behavior
 - Additional provider-specific payload tuning if future providers are introduced
 - Additional read-only analysis tools after explicit approval
-- Text-to-SQL Assistant runtime behind a feature flag using `ConnectionStrings:AssistantReadOnly`
+- Text-to-SQL Assistant runtime behind a feature flag using separate `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly` data sources
 - Dedicated assistant authorization policy or rate limiting
 - Frontend integration with the backend assistant endpoint
 

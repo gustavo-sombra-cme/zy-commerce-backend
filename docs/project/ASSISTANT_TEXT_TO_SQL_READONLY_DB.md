@@ -7,23 +7,31 @@ Task 1 adds only the database boundary for a future Text-to-SQL Assistant:
 - `assistant` schema
 - approved read-only assistant views
 - manual read-only SQL principal setup guidance
-- local-only `ConnectionStrings:AssistantReadOnly` guidance
+- local-only read-only connection string guidance
 
 Text-to-SQL runtime execution is not implemented yet. The existing assistant behavior is unchanged.
 
 ## Migration Strategy
 
-The assistant views are added through the Orders EF Core migration path:
+Catalog assistant views are added through the Catalog EF Core migration path:
+
+```powershell
+dotnet ef database update --context CatalogDbContext --project src\Modules\Catalog\Ecommerce.Catalog.Infrastructure --startup-project src\Api\Ecommerce.Api
+```
+
+Orders assistant views are added through the Orders EF Core migration path:
 
 ```powershell
 dotnet ef database update --context OrdersDbContext --project src\Modules\Orders\Ecommerce.Orders.Infrastructure --startup-project src\Api\Ecommerce.Api
 ```
 
-The migration is raw SQL because the views span the existing `catalog` and `orders` schemas and are not EF entity models.
+The migrations are raw SQL because these views are read-only database surfaces and are not EF entity models.
 
-Important: the target database must contain both the `catalog.Products` table and the `orders.Orders` / `orders.OrderLines` tables before applying this migration. The committed local development defaults use separate `ConnectionStrings:Catalog` and `ConnectionStrings:Orders` databases, so a developer may need to point those contexts at a shared local database, or otherwise apply equivalent existing Catalog and Orders migrations into the same assistant-readable database before applying this view migration.
+Important: Catalog and Orders use separate physical databases. Do not create cross-database views, linked servers, synonyms, or views that query Orders tables from the Catalog database or Catalog tables from the Orders database.
 
 ## Approved Views
+
+Catalog database views:
 
 `assistant.v_ProductSearch`
 
@@ -46,6 +54,8 @@ Important: the target database must contain both the `catalog.Products` table an
 - `IsActive`
 - `CreatedAt`
 - `UpdatedAt`
+
+Orders database views:
 
 `assistant.v_MyOrders`
 
@@ -78,7 +88,7 @@ The current database schema does not contain order numbers or currency columns, 
 
 ## Manual Read-Only SQL Principal
 
-The developer must create the real login/user manually. Do not commit real passwords or real read-only connection strings.
+The developer must create the real login/user manually in each database. Do not commit real passwords or real read-only connection strings.
 
 Adapt this script locally for SQL Server Developer/Express, LocalDB, Windows integrated auth, or an existing SQL login:
 
@@ -88,18 +98,32 @@ USE [master];
 GO
 
 -- Replace this password locally before running. Do not commit the real password.
-CREATE LOGIN [zy_assistant_reader]
+CREATE LOGIN [AssistantCatalogRo]
 WITH PASSWORD = '<replace-locally-with-strong-password>';
 GO
 
--- Run in the application database that contains catalog, orders, and assistant schemas.
-USE [<replace-with-application-database-name>];
+CREATE LOGIN [AssistantOrdersRo]
+WITH PASSWORD = '<replace-locally-with-strong-password>';
 GO
 
-CREATE USER [zy_assistant_reader] FOR LOGIN [zy_assistant_reader];
+-- Run in the Catalog database after the Catalog assistant migration is applied.
+USE [<replace-with-catalog-database-name>];
 GO
 
-GRANT SELECT ON SCHEMA::[assistant] TO [zy_assistant_reader];
+CREATE USER [AssistantCatalogRo] FOR LOGIN [AssistantCatalogRo];
+GO
+
+GRANT SELECT ON SCHEMA::[assistant] TO [AssistantCatalogRo];
+GO
+
+-- Run in the Orders database after the Orders assistant migration is applied.
+USE [<replace-with-orders-database-name>];
+GO
+
+CREATE USER [AssistantOrdersRo] FOR LOGIN [AssistantOrdersRo];
+GO
+
+GRANT SELECT ON SCHEMA::[assistant] TO [AssistantOrdersRo];
 GO
 ```
 
@@ -109,13 +133,15 @@ Permission rules:
 - Do not grant `SELECT` on `catalog`, `orders`, or `auth` base tables.
 - Do not grant `INSERT`, `UPDATE`, `DELETE`, `EXECUTE`, `CREATE`, `ALTER`, `DROP`, ownership, or elevated database roles.
 - Do not grant direct access to `auth.Users`.
+- Do not use `db_datareader` or `db_owner`.
 
-## AssistantReadOnly Connection String
+## Read-Only Connection Strings
 
 Future Task 2 will use:
 
 ```text
-ConnectionStrings:AssistantReadOnly
+ConnectionStrings:AssistantCatalogReadOnly
+ConnectionStrings:AssistantOrdersReadOnly
 ```
 
 Store it locally only, using user secrets or environment variables. Do not add a real password to `appsettings.json` or `appsettings.Development.json`.
@@ -123,22 +149,28 @@ Store it locally only, using user secrets or environment variables. Do not add a
 User secrets example:
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:AssistantReadOnly" "Server=...;Database=...;User Id=zy_assistant_reader;Password=...;TrustServerCertificate=True;" --project src\Api\Ecommerce.Api
+dotnet user-secrets set "ConnectionStrings:AssistantCatalogReadOnly" "Server=...;Database=...;User Id=AssistantCatalogRo;Password=...;TrustServerCertificate=True;" --project src\Api\Ecommerce.Api
+dotnet user-secrets set "ConnectionStrings:AssistantOrdersReadOnly" "Server=...;Database=...;User Id=AssistantOrdersRo;Password=...;TrustServerCertificate=True;" --project src\Api\Ecommerce.Api
 ```
 
 Environment variable example:
 
 ```powershell
-$env:ConnectionStrings__AssistantReadOnly="Server=...;Database=...;User Id=zy_assistant_reader;Password=...;TrustServerCertificate=True;"
+$env:ConnectionStrings__AssistantCatalogReadOnly="Server=...;Database=...;User Id=AssistantCatalogRo;Password=...;TrustServerCertificate=True;"
+$env:ConnectionStrings__AssistantOrdersReadOnly="Server=...;Database=...;User Id=AssistantOrdersRo;Password=...;TrustServerCertificate=True;"
 ```
 
 ## Manual Verification Checklist
 
-After applying the migration and manually creating the read-only user:
+After applying both migrations and manually creating the read-only users:
 
-1. Query all `assistant` views using a normal admin/app database connection.
-2. Query all `assistant` views using `zy_assistant_reader`.
-3. Attempt `SELECT` from `catalog.Products`, `orders.Orders`, `orders.OrderLines`, and `auth.Users` using `zy_assistant_reader`; confirm direct base-table access is denied.
-4. Confirm the assistant views expose no password hashes, tokens, security stamps, auth internals, secrets, or connection strings.
-5. Confirm order views include `BuyerUserId` for future authenticated-user scoping.
-6. Store `ConnectionStrings:AssistantReadOnly` locally only.
+1. Query Catalog `assistant` views using a normal Catalog admin/app database connection.
+2. Query Orders `assistant` views using a normal Orders admin/app database connection.
+3. Query Catalog `assistant` views using `AssistantCatalogRo`.
+4. Query Orders `assistant` views using `AssistantOrdersRo`.
+5. Attempt `SELECT` from `catalog.Products` using `AssistantCatalogRo`; confirm direct base-table access is denied.
+6. Attempt `SELECT` from `orders.Orders` and `orders.OrderLines` using `AssistantOrdersRo`; confirm direct base-table access is denied.
+7. Confirm neither read-only user has access to `auth.Users`.
+8. Confirm the assistant views expose no password hashes, tokens, security stamps, auth internals, secrets, or connection strings.
+9. Confirm order views include `BuyerUserId` for future authenticated-user scoping.
+10. Store read-only connection strings locally only.

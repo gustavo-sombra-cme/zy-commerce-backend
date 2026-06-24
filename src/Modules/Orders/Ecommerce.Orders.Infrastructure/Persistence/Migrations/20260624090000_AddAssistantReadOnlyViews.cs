@@ -15,38 +15,6 @@ namespace Ecommerce.Orders.Infrastructure.Persistence.Migrations
 
             migrationBuilder.Sql(
                 """
-                CREATE OR ALTER VIEW [assistant].[v_ProductSearch]
-                AS
-                SELECT
-                    [p].[Id] AS [ProductId],
-                    [p].[Name],
-                    [p].[Sku],
-                    [p].[Description],
-                    [p].[Price] AS [PriceAmount],
-                    [p].[IsActive],
-                    [p].[CreatedAt],
-                    [p].[UpdatedAt]
-                FROM [catalog].[Products] AS [p];
-                """);
-
-            migrationBuilder.Sql(
-                """
-                CREATE OR ALTER VIEW [assistant].[v_ProductDetails]
-                AS
-                SELECT
-                    [p].[Id] AS [ProductId],
-                    [p].[Name],
-                    [p].[Sku],
-                    [p].[Description],
-                    [p].[Price] AS [PriceAmount],
-                    [p].[IsActive],
-                    [p].[CreatedAt],
-                    [p].[UpdatedAt]
-                FROM [catalog].[Products] AS [p];
-                """);
-
-            migrationBuilder.Sql(
-                """
                 CREATE OR ALTER VIEW [assistant].[v_MyOrders]
                 AS
                 SELECT
@@ -103,8 +71,6 @@ namespace Ecommerce.Orders.Infrastructure.Persistence.Migrations
             migrationBuilder.Sql("DROP VIEW IF EXISTS [assistant].[v_MyOrderSummary];");
             migrationBuilder.Sql("DROP VIEW IF EXISTS [assistant].[v_MyOrderLines];");
             migrationBuilder.Sql("DROP VIEW IF EXISTS [assistant].[v_MyOrders];");
-            migrationBuilder.Sql("DROP VIEW IF EXISTS [assistant].[v_ProductDetails];");
-            migrationBuilder.Sql("DROP VIEW IF EXISTS [assistant].[v_ProductSearch];");
             migrationBuilder.Sql("IF SCHEMA_ID(N'assistant') IS NOT NULL EXEC(N'DROP SCHEMA [assistant]');");
         }
     }

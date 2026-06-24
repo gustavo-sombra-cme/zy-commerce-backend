@@ -121,7 +121,7 @@ All approved projects exist and build successfully:
 - Orders assistant analysis is owner-scoped to the authenticated JWT `sub` claim.
 - Unsafe, mutating, admin, SQL, token, database, internal, unclear, and cross-user requests return safe unsupported responses.
 - Text-to-SQL runtime behavior is not implemented yet. Task 1 only added the future SQL data boundary through approved read-only views under the `assistant` schema and setup guidance in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
-- Future Text-to-SQL execution must use `ConnectionStrings:AssistantReadOnly` with a manually created read-only SQL principal that has `SELECT` only on the `assistant` schema/views and no direct base-table permissions.
+- Future Text-to-SQL execution must use `ConnectionStrings:AssistantCatalogReadOnly` for Catalog views and `ConnectionStrings:AssistantOrdersReadOnly` for Orders views. Each read-only principal should have `SELECT` only on the `assistant` schema/views in its own database and no direct base-table permissions.
 - ADR-004 documents the assistant orchestration boundary and safety model.
 - ADR-005 documents untrusted assistant intent interpretation and plan validation.
 - ADR-006 documents config-gated LLM provider integration.
@@ -133,10 +133,11 @@ All approved projects exist and build successfully:
 - **Catalog Migrations:** `20260608111338_InitialCatalogSchema.cs`, `20260618090000_AddProductPrice.cs`
 - **Auth Migrations:** `20260609092505_InitialAuthSchema.cs`, `20260623090000_AddUserRole.cs`
 - **Orders Migration:** `20260612090403_InitialOrdersSchema.cs`
-- **Assistant View Migration:** `20260624090000_AddAssistantReadOnlyViews.cs` in the Orders migration path
+- **Assistant Catalog View Migration:** `20260624090000_AddAssistantCatalogReadOnlyViews.cs` in the Catalog migration path
+- **Assistant Orders View Migration:** `20260624090000_AddAssistantReadOnlyViews.cs` in the Orders migration path
 - **Auth Persistence:** `EcommerceAuth` LocalDB database updated through `InitialAuthSchema`
 - **Orders Persistence:** `EcommerceOrders` LocalDB database created and updated through `InitialOrdersSchema`
-- **Assistant View Boundary:** The view migration requires a target database containing both `catalog.Products` and `orders.Orders` / `orders.OrderLines`; committed local defaults use separate Catalog and Orders databases, so local application requires developer-selected shared database setup or equivalent manual migration ordering.
+- **Assistant View Boundary:** Catalog and Orders views are created separately in their owning databases. Do not use cross-database views, linked servers, synonyms, or a combined Catalog/Orders database assumption for Task 1.
 
 ### Build & Test Status
 
