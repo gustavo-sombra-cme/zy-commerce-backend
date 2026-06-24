@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -6,10 +5,10 @@ using Microsoft.Extensions.Options;
 
 namespace Ecommerce.Api.Assistant;
 
-public sealed class HttpAssistantLlmClient(
+public sealed class GeminiAssistantLlmClient(
     HttpClient httpClient,
     IOptions<AssistantLlmOptions> options,
-    ILogger<HttpAssistantLlmClient> logger) : IAssistantLlmClient
+    ILogger<GeminiAssistantLlmClient> logger) : IAssistantLlmClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -20,6 +19,7 @@ public sealed class HttpAssistantLlmClient(
         var llmOptions = options.Value;
 
         if (!llmOptions.Enabled
+            || !llmOptions.IsGeminiProvider
             || string.IsNullOrWhiteSpace(question)
             || string.IsNullOrWhiteSpace(llmOptions.ResolvedModel)
             || !TryGetEndpoint(llmOptions, out var endpoint)
@@ -28,10 +28,11 @@ public sealed class HttpAssistantLlmClient(
             return null;
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            CreateGenerateContentUri(endpoint, llmOptions.ResolvedModel, apiKey));
         request.Content = new StringContent(
-            JsonSerializer.Serialize(CreateRequestBody(llmOptions.ResolvedModel, question), JsonOptions),
+            JsonSerializer.Serialize(CreateRequestBody(question), JsonOptions),
             Encoding.UTF8,
             "application/json");
 
@@ -47,72 +48,38 @@ public sealed class HttpAssistantLlmClient(
         }
 
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-        return TryExtractOutputText(responseBody);
+        return TryExtractCandidateText(responseBody);
     }
 
-    private static object CreateRequestBody(string model, string question) =>
+    private static object CreateRequestBody(string question) =>
         new
         {
-            model,
-            input = new object[]
+            systemInstruction = new
             {
-                new { role = "system", content = SystemPrompt },
-                new { role = "user", content = question }
-            },
-            text = new
-            {
-                format = new
+                parts = new[]
                 {
-                    type = "json_schema",
-                    name = "assistant_intent_plan",
-                    strict = true,
-                    schema = new
+                    new { text = SystemPrompt }
+                }
+            },
+            contents = new[]
+            {
+                new
+                {
+                    role = "user",
+                    parts = new[]
                     {
-                        type = "object",
-                        additionalProperties = false,
-                        required = new[] { "kind", "tools", "arguments" },
-                        properties = new
-                        {
-                            kind = new
-                            {
-                                type = "string",
-                                @enum = Enum.GetNames<AssistantIntentKind>()
-                            },
-                            tools = new
-                            {
-                                type = "array",
-                                items = new
-                                {
-                                    type = "string",
-                                    @enum = new[]
-                                    {
-                                        AssistantToolNames.CatalogSearch,
-                                        AssistantToolNames.CatalogGetProduct,
-                                        AssistantToolNames.OrdersSearch,
-                                        AssistantToolNames.OrdersGetOrder,
-                                        AssistantToolNames.OrdersAnalyze
-                                    }
-                                }
-                            },
-                            arguments = new
-                            {
-                                type = "object",
-                                additionalProperties = false,
-                                properties = new
-                                {
-                                    amount = new { type = new[] { "string", "null" } },
-                                    searchText = new { type = new[] { "string", "null" } },
-                                    productId = new { type = new[] { "string", "null" } }
-                                },
-                                required = new[] { "amount", "searchText", "productId" }
-                            }
-                        }
+                        new { text = question }
                     }
                 }
+            },
+            generationConfig = new
+            {
+                temperature = 0,
+                responseMimeType = "application/json"
             }
         };
 
-    private static string? TryExtractOutputText(string responseBody)
+    private static string? TryExtractCandidateText(string responseBody)
     {
         if (string.IsNullOrWhiteSpace(responseBody))
         {
@@ -123,26 +90,31 @@ public sealed class HttpAssistantLlmClient(
         {
             using var document = JsonDocument.Parse(responseBody);
 
-            if (document.RootElement.TryGetProperty("output_text", out var outputText)
-                && outputText.ValueKind == JsonValueKind.String)
+            if (!document.RootElement.TryGetProperty("candidates", out var candidates)
+                || candidates.ValueKind != JsonValueKind.Array)
             {
-                return outputText.GetString();
+                return null;
             }
 
-            if (TryExtractResponsesOutputText(document.RootElement, out var text))
+            foreach (var candidate in candidates.EnumerateArray())
             {
-                return text;
-            }
+                if (!candidate.TryGetProperty("content", out var content)
+                    || content.ValueKind != JsonValueKind.Object
+                    || !content.TryGetProperty("parts", out var parts)
+                    || parts.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
 
-            if (document.RootElement.TryGetProperty("choices", out var choices)
-                && choices.ValueKind == JsonValueKind.Array
-                && choices.GetArrayLength() > 0
-                && choices[0].TryGetProperty("message", out var message)
-                && message.ValueKind == JsonValueKind.Object
-                && message.TryGetProperty("content", out var content)
-                && content.ValueKind == JsonValueKind.String)
-            {
-                return content.GetString();
+                foreach (var part in parts.EnumerateArray())
+                {
+                    if (part.TryGetProperty("text", out var text)
+                        && text.ValueKind == JsonValueKind.String
+                        && !string.IsNullOrWhiteSpace(text.GetString()))
+                    {
+                        return text.GetString();
+                    }
+                }
             }
 
             return null;
@@ -160,11 +132,10 @@ public sealed class HttpAssistantLlmClient(
         var error = await TryReadProviderErrorAsync(response, cancellationToken);
 
         logger.LogWarning(
-            "Assistant LLM provider error diagnostics: statusCode={StatusCode}, openAiErrorCode={OpenAiErrorCode}, openAiErrorType={OpenAiErrorType}, openAiErrorParam={OpenAiErrorParam}, sanitizedErrorMessage={SanitizedErrorMessage}.",
+            "Assistant Gemini provider error diagnostics: statusCode={StatusCode}, geminiErrorCode={GeminiErrorCode}, geminiErrorStatus={GeminiErrorStatus}, sanitizedErrorMessage={SanitizedErrorMessage}.",
             (int)response.StatusCode,
             error.Code,
-            error.Type,
-            error.Param,
+            error.Status,
             error.Message);
     }
 
@@ -188,9 +159,8 @@ public sealed class HttpAssistantLlmClient(
                 : document.RootElement;
 
             return new ProviderError(
-                TryReadSafeString(error, "code"),
-                TryReadSafeString(error, "type"),
-                TryReadSafeString(error, "param"),
+                TryReadCode(error),
+                TryReadSafeString(error, "status"),
                 SanitizeErrorMessage(TryReadString(error, "message")));
         }
         catch (JsonException)
@@ -199,41 +169,19 @@ public sealed class HttpAssistantLlmClient(
         }
     }
 
-    private static bool TryExtractResponsesOutputText(
-        JsonElement root,
-        out string? text)
+    private static string? TryReadCode(JsonElement element)
     {
-        text = null;
-
-        if (!root.TryGetProperty("output", out var output)
-            || output.ValueKind != JsonValueKind.Array)
+        if (!element.TryGetProperty("code", out var value))
         {
-            return false;
+            return null;
         }
 
-        foreach (var outputItem in output.EnumerateArray())
+        return value.ValueKind switch
         {
-            if (!outputItem.TryGetProperty("content", out var content)
-                || content.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            foreach (var contentItem in content.EnumerateArray())
-            {
-                if (contentItem.TryGetProperty("type", out var type)
-                    && type.ValueKind == JsonValueKind.String
-                    && type.GetString() == "output_text"
-                    && contentItem.TryGetProperty("text", out var outputText)
-                    && outputText.ValueKind == JsonValueKind.String)
-                {
-                    text = outputText.GetString();
-                    return true;
-                }
-            }
-        }
-
-        return false;
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.String => SanitizeMetadataValue(value.GetString()),
+            _ => null
+        };
     }
 
     private static string? TryReadSafeString(JsonElement element, string propertyName) =>
@@ -281,7 +229,7 @@ public sealed class HttpAssistantLlmClient(
             TimeSpan.FromMilliseconds(100));
         sanitized = System.Text.RegularExpressions.Regex.Replace(
             sanitized,
-            @"\b(sk-[A-Za-z0-9_-]+|Bearer\s+[A-Za-z0-9._-]+|[A-Za-z0-9_-]{32,})\b",
+            @"\b(AIza[A-Za-z0-9_-]+|Bearer\s+[A-Za-z0-9._-]+|[A-Za-z0-9_-]{32,})\b",
             "[redacted]",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase,
             TimeSpan.FromMilliseconds(100));
@@ -303,8 +251,20 @@ public sealed class HttpAssistantLlmClient(
         AssistantLlmOptions options,
         out Uri endpoint)
     {
-        return Uri.TryCreate(options.Endpoint, UriKind.Absolute, out endpoint!)
+        return Uri.TryCreate(options.ResolvedEndpoint, UriKind.Absolute, out endpoint!)
             && endpoint.Scheme == Uri.UriSchemeHttps;
+    }
+
+    private static Uri CreateGenerateContentUri(
+        Uri endpoint,
+        string model,
+        string apiKey)
+    {
+        var builder = new UriBuilder(endpoint);
+        var basePath = builder.Path.TrimEnd('/');
+        builder.Path = $"{basePath}/models/{Uri.EscapeDataString(model)}:generateContent";
+        builder.Query = $"key={Uri.EscapeDataString(apiKey)}";
+        return builder.Uri;
     }
 
     private const string SystemPrompt = """
@@ -322,10 +282,9 @@ public sealed class HttpAssistantLlmClient(
 
     private sealed record ProviderError(
         string? Code,
-        string? Type,
-        string? Param,
+        string? Status,
         string? Message)
     {
-        public static ProviderError Empty { get; } = new(null, null, null, null);
+        public static ProviderError Empty { get; } = new(null, null, null);
     }
 }

@@ -58,7 +58,15 @@ builder.Services.AddSingleton<AssistantIntentRouter>();
 builder.Services.AddSingleton<AssistantIntentPlanValidator>();
 builder.Services.AddSingleton<AssistantIntentPlanJsonParser>();
 builder.Services.AddSingleton<DeterministicAssistantIntentInterpreter>();
-builder.Services.AddHttpClient<IAssistantLlmClient, HttpAssistantLlmClient>();
+builder.Services.AddHttpClient<HttpAssistantLlmClient>();
+builder.Services.AddHttpClient<GeminiAssistantLlmClient>();
+builder.Services.AddScoped<IAssistantLlmClient>(services =>
+{
+    var options = services.GetRequiredService<IOptions<AssistantLlmOptions>>().Value;
+    return options.IsGeminiProvider
+        ? services.GetRequiredService<GeminiAssistantLlmClient>()
+        : services.GetRequiredService<HttpAssistantLlmClient>();
+});
 builder.Services.AddScoped<LlmAssistantIntentInterpreter>();
 builder.Services.AddScoped<IAssistantIntentInterpreter>(services =>
 {

@@ -75,10 +75,10 @@ public sealed class AssistantOrchestrator(
         logger.LogInformation(
             "Assistant LLM configuration diagnostics: llmEnabled={LlmEnabled}, providerEndpointPresent={ProviderEndpointPresent}, providerEndpointValid={ProviderEndpointValid}, modelPresent={ModelPresent}, apiKeyEnvironmentVariableNamePresent={ApiKeyEnvironmentVariableNamePresent}, apiKeyResolved={ApiKeyResolved}.",
             options.Enabled,
-            !string.IsNullOrWhiteSpace(options.Endpoint),
-            IsHttpsEndpoint(options.Endpoint),
-            !string.IsNullOrWhiteSpace(options.Model),
-            !string.IsNullOrWhiteSpace(options.ApiKeyEnvironmentVariable),
+            !string.IsNullOrWhiteSpace(options.ResolvedEndpoint),
+            IsHttpsEndpoint(options.ResolvedEndpoint),
+            !string.IsNullOrWhiteSpace(options.ResolvedModel),
+            !string.IsNullOrWhiteSpace(options.ResolvedApiKeyEnvironmentVariable),
             IsApiKeyResolved(options));
 
         if (!options.Enabled)
@@ -111,19 +111,7 @@ public sealed class AssistantOrchestrator(
 
     private static bool IsApiKeyResolved(AssistantLlmOptions options)
     {
-        var apiKey = string.Empty;
-
-        if (!string.IsNullOrWhiteSpace(options.ApiKeyEnvironmentVariable))
-        {
-            apiKey = Environment.GetEnvironmentVariable(options.ApiKeyEnvironmentVariable) ?? string.Empty;
-        }
-
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            apiKey = options.ApiKey;
-        }
-
-        return !string.IsNullOrWhiteSpace(apiKey);
+        return options.TryResolveApiKey(out _);
     }
 
     private static bool IsHttpsEndpoint(string endpoint) =>

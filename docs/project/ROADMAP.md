@@ -46,6 +46,7 @@
 - Assistant Intent Interpreter Phase 2
 - ADR for untrusted assistant intent interpretation
 - Assistant LLM Provider Integration Phase 3
+- Backend Gemini LLM Provider for Ecommerce Assistant
 - ADR for config-gated assistant LLM provider integration
 - Project memory documentation
 - AGENT.md router and instruction file split
@@ -147,12 +148,13 @@ Not currently started:
 
 ## Assistant Candidates
 
-Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, strict untrusted `AssistantIntentPlan` validation, and fake provider tests only.
+Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, and fake provider tests only.
 
 Potential future phases:
 
 - Production provider configuration and operational smoke testing outside automated tests
-- Provider-specific payload tuning if the selected provider does not match the current chat-completions style adapter
+- Gemini POC demo validation against account/project-specific free-tier and rate-limit behavior
+- Additional provider-specific payload tuning if future providers are introduced
 - Additional read-only analysis tools after explicit approval
 - Dedicated assistant authorization policy or rate limiting
 - Frontend integration with the backend assistant endpoint

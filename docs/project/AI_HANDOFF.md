@@ -127,12 +127,15 @@ Platform assistant orchestration is API-only:
 - Implementation lives under `src/Api/Ecommerce.Api/Assistant` and `src/Api/Ecommerce.Api/Controllers/Assistant`.
 - The assistant uses `IAssistantIntentInterpreter`; disabled-mode production DI resolves `DeterministicAssistantIntentInterpreter` by default.
 - `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
+- Provider selection is backend configuration only. `Assistant:Llm:Provider` defaults to `OpenAI`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` overrides it and selects `GeminiAssistantLlmClient`.
+- Gemini is a POC/testing provider. Configure it with `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, optional `ECOMMERCE_ASSISTANT_GEMINI_MODEL` (default `gemini-2.5-flash`), and optional `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT` (default `https://generativelanguage.googleapis.com/v1beta`).
+- Gemini free-tier and rate-limit behavior varies by Google account/project. A ChatGPT/OpenAI subscription is unrelated to Gemini Developer API access.
 - The provider adapter returns only structured `AssistantIntentPlan` JSON and never executes tools directly.
 - Interpreter output is represented as an untrusted `AssistantIntentPlan` and must pass `AssistantIntentPlanValidator` before any execution.
 - The validator rejects unknown tools, invalid arguments, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
 - No provider SDK package, committed API key, committed secret, live test call, database change, migration, or MCP dependency has been added.
 - API keys must come only from environment variables or user secrets/non-committed configuration providers. Do not put API keys in `appsettings*.json`.
-- Do not log prompts, raw provider responses, API keys, tokens, auth headers, or sensitive payloads.
+- Do not log prompts, raw provider responses, API keys, tokens, auth headers, full Gemini request URIs, or sensitive payloads.
 - Temporary assistant LLM configuration diagnostics log only booleans/presence flags and fallback/failure status; they must not be expanded to include prompts, raw provider responses, API key values, auth headers, tokens, or sensitive payloads.
 - Approved internal capability allowlist: `catalog_search`, `catalog_get_product`, `orders_search`, `orders_get_order`, `orders_analyze`.
 - Orders analysis uses the authenticated JWT `sub` claim for buyer scope.
