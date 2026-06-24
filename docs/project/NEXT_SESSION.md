@@ -31,6 +31,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Assistant LLM Provider Integration Phase 3 (`LlmAssistantIntentInterpreter`, config-gated provider options, HTTP client adapter, fake provider tests only)
 - Backend Gemini LLM Provider (`GeminiAssistantLlmClient`, selectable via configuration, POC/testing only)
 - Assistant LLM Configuration Diagnostics (temporary safe boolean/presence logs for LLM config, provider failure, fallback, and validation failure)
+- Assistant Text-to-SQL read-only database boundary (`assistant` schema/views and manual read-only DB setup docs only)
 - Backend Admin Product Management (`RequireAdmin`, Auth role claims, Admin-only Catalog writes, product price update)
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
@@ -113,12 +114,14 @@ All approved projects exist and build successfully:
 - The validator checks intent kind, exact read-only tool plan, allowed arguments, unsafe request terms, and model-provided scope arguments.
 - Temporary LLM diagnostics log only safe booleans/presence flags for config, provider call failure, deterministic fallback usage, and model output validation failure.
 - Do not log prompts, raw provider responses, API keys, tokens, auth headers, full Gemini request URIs, or sensitive payloads.
-- Fake/test interpreters and fake provider clients are used in tests only; no provider SDK package, committed API key, committed secret, live test call, database change, migration, or MCP dependency has been added.
+- Fake/test interpreters and fake provider clients are used in tests only; no provider SDK package, committed API key, committed secret, live test call, runtime database access, or MCP dependency has been added for LLM provider execution.
 - Approved capability names are `catalog_search`, `catalog_get_product`, `orders_search`, `orders_get_order`, and `orders_analyze`.
 - Assistant code dispatches existing Catalog and Orders read-side CQRS queries through `ISender`.
 - Assistant code must not call EF Core DbContexts, repositories, Domain objects, module internals, write commands, or MCP protocol packages directly.
 - Orders assistant analysis is owner-scoped to the authenticated JWT `sub` claim.
 - Unsafe, mutating, admin, SQL, token, database, internal, unclear, and cross-user requests return safe unsupported responses.
+- Text-to-SQL runtime behavior is not implemented yet. Task 1 only added the future SQL data boundary through approved read-only views under the `assistant` schema and setup guidance in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
+- Future Text-to-SQL execution must use `ConnectionStrings:AssistantReadOnly` with a manually created read-only SQL principal that has `SELECT` only on the `assistant` schema/views and no direct base-table permissions.
 - ADR-004 documents the assistant orchestration boundary and safety model.
 - ADR-005 documents untrusted assistant intent interpretation and plan validation.
 - ADR-006 documents config-gated LLM provider integration.
@@ -130,8 +133,10 @@ All approved projects exist and build successfully:
 - **Catalog Migrations:** `20260608111338_InitialCatalogSchema.cs`, `20260618090000_AddProductPrice.cs`
 - **Auth Migrations:** `20260609092505_InitialAuthSchema.cs`, `20260623090000_AddUserRole.cs`
 - **Orders Migration:** `20260612090403_InitialOrdersSchema.cs`
+- **Assistant View Migration:** `20260624090000_AddAssistantReadOnlyViews.cs` in the Orders migration path
 - **Auth Persistence:** `EcommerceAuth` LocalDB database updated through `InitialAuthSchema`
 - **Orders Persistence:** `EcommerceOrders` LocalDB database created and updated through `InitialOrdersSchema`
+- **Assistant View Boundary:** The view migration requires a target database containing both `catalog.Products` and `orders.Orders` / `orders.OrderLines`; committed local defaults use separate Catalog and Orders databases, so local application requires developer-selected shared database setup or equivalent manual migration ordering.
 
 ### Build & Test Status
 
