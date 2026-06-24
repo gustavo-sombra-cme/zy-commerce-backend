@@ -279,7 +279,10 @@ Current platform assistant behavior:
 - Treats interpreter output as an untrusted `AssistantIntentPlan` that must pass `AssistantIntentPlanValidator` before execution.
 - Validates proposed intent kind, tool names, and arguments against the approved read-only assistant capability allowlist.
 - Rejects unknown tools, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
-- No API key, secret, provider SDK package, live test call, database change, migration, or MCP dependency has been added.
+- No API key, secret, provider SDK package, live test call, runtime database access, or MCP dependency has been added for LLM provider execution.
+- Assistant Text-to-SQL Task 1 added only the future database boundary: approved read-only views under the `assistant` schema and setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
+- Text-to-SQL validation, execution, SQL planning, and assistant orchestration wiring are not implemented yet.
+- Future Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`.
 - No prompts, raw provider responses, API keys, JWTs, auth headers, full Gemini request URIs, or sensitive payloads are logged.
 - Assistant implementation lives under `src/Api/Ecommerce.Api/Assistant` with transport in `src/Api/Ecommerce.Api/Controllers/Assistant`.
 - Assistant capabilities are internally allowlisted as:
@@ -305,15 +308,32 @@ Catalog has EF Core persistence and two approved migrations:
 
 - `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260608111338_InitialCatalogSchema.cs`
 - `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260618090000_AddProductPrice.cs`
+- `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260624090000_AddAssistantCatalogReadOnlyViews.cs`
 
 Auth has EF Core persistence and one approved migration:
 
 - `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Persistence/Migrations/20260609092505_InitialAuthSchema.cs`
 - `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Persistence/Migrations/20260623090000_AddUserRole.cs`
 
-Orders has EF Core persistence and one approved migration:
+Orders has EF Core persistence and approved migrations:
 
 - `src/Modules/Orders/Ecommerce.Orders.Infrastructure/Persistence/Migrations/20260612090403_InitialOrdersSchema.cs`
+- `src/Modules/Orders/Ecommerce.Orders.Infrastructure/Persistence/Migrations/20260624090000_AddAssistantReadOnlyViews.cs`
+
+Assistant read-only views are created under the `assistant` schema:
+
+Catalog database:
+
+- `assistant.v_ProductSearch`
+- `assistant.v_ProductDetails`
+
+Orders database:
+
+- `assistant.v_MyOrders`
+- `assistant.v_MyOrderLines`
+- `assistant.v_MyOrderSummary`
+
+Catalog and Orders use separate physical databases. Assistant views are created separately in their owning databases; Task 1 does not use cross-database views, linked servers, synonyms, or a combined Catalog/Orders database assumption.
 
 Local development uses:
 
@@ -325,6 +345,7 @@ Local development uses:
 
 The Auth LocalDB database `EcommerceAuth` has been updated through `InitialAuthSchema`.
 The Orders LocalDB database `EcommerceOrders` has been created and updated through `InitialOrdersSchema`.
+Assistant read-only DB users must be created manually in the Catalog and Orders databases and granted `SELECT` only on the local `assistant` schema/views. Do not commit real `ConnectionStrings:AssistantCatalogReadOnly` or `ConnectionStrings:AssistantOrdersReadOnly` values or passwords.
 
 ## Error Handling
 

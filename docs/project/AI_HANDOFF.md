@@ -133,8 +133,13 @@ Platform assistant orchestration is API-only:
 - The provider adapter returns only structured `AssistantIntentPlan` JSON and never executes tools directly.
 - Interpreter output is represented as an untrusted `AssistantIntentPlan` and must pass `AssistantIntentPlanValidator` before any execution.
 - The validator rejects unknown tools, invalid arguments, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
-- No provider SDK package, committed API key, committed secret, live test call, database change, migration, or MCP dependency has been added.
+- No provider SDK package, committed API key, committed secret, live test call, runtime database access, or MCP dependency has been added for LLM provider execution.
 - API keys must come only from environment variables or user secrets/non-committed configuration providers. Do not put API keys in `appsettings*.json`.
+- Assistant Text-to-SQL Task 1 has added only the future database boundary: the `assistant` schema and approved read-only views through an Orders EF Core migration, plus setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
+- Text-to-SQL validation, SQL execution, LLM SQL planning, and orchestration wiring are not implemented yet.
+- Future Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`. Do not commit real values or passwords.
+- The assistant read-only SQL principals must be granted `SELECT` only on the `assistant` schema/views in their owning databases and no direct access to base Catalog, Orders, or Auth tables.
+- The assistant views expose Catalog product fields and owner-scoped Orders fields with `BuyerUserId`; they do not expose `auth.Users`, password hashes, tokens, or auth internals.
 - Do not log prompts, raw provider responses, API keys, tokens, auth headers, full Gemini request URIs, or sensitive payloads.
 - Temporary assistant LLM configuration diagnostics log only booleans/presence flags and fallback/failure status; they must not be expanded to include prompts, raw provider responses, API key values, auth headers, tokens, or sensitive payloads.
 - Approved internal capability allowlist: `catalog_search`, `catalog_get_product`, `orders_search`, `orders_get_order`, `orders_analyze`.
