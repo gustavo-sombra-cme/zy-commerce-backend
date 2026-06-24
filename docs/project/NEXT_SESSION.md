@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-06-23
+**Last Updated:** 2026-06-24
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -29,6 +29,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Ecommerce Assistant Agent Phase 1 (`POST /api/assistant/query`, protected deterministic read-only orchestration)
 - Assistant Intent Interpreter Phase 2 (`IAssistantIntentInterpreter`, deterministic default, untrusted plan validation, fake interpreter tests only)
 - Assistant LLM Provider Integration Phase 3 (`LlmAssistantIntentInterpreter`, config-gated provider options, HTTP client adapter, fake provider tests only)
+- Backend Gemini LLM Provider (`GeminiAssistantLlmClient`, selectable via configuration, POC/testing only)
 - Assistant LLM Configuration Diagnostics (temporary safe boolean/presence logs for LLM config, provider failure, fallback, and validation failure)
 - Backend Admin Product Management (`RequireAdmin`, Auth role claims, Admin-only Catalog writes, product price update)
 - Swagger Authentication Integration
@@ -104,10 +105,14 @@ All approved projects exist and build successfully:
 - Implementation lives under `src/Api/Ecommerce.Api/Assistant` and `src/Api/Ecommerce.Api/Controllers/Assistant`.
 - Assistant intent interpretation goes through `IAssistantIntentInterpreter`; disabled-mode production DI resolves `DeterministicAssistantIntentInterpreter` by default.
 - `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
+- Provider selection is backend configuration only. `Assistant:Llm:Provider` defaults to `OpenAI`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects `GeminiAssistantLlmClient`.
+- Gemini is a POC/testing provider. Configure it with `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, optional `ECOMMERCE_ASSISTANT_GEMINI_MODEL` (default `gemini-2.5-flash`), and optional `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT` (default `https://generativelanguage.googleapis.com/v1beta`).
+- Gemini free-tier and rate-limit behavior varies by Google account/project. A ChatGPT/OpenAI subscription is unrelated to Gemini Developer API access.
 - `Assistant:Llm` settings are committed only with non-secret values. API keys must come from the configured environment variable or user secrets/non-committed configuration providers.
 - Interpreter output is an untrusted `AssistantIntentPlan` that must pass `AssistantIntentPlanValidator` before any execution.
 - The validator checks intent kind, exact read-only tool plan, allowed arguments, unsafe request terms, and model-provided scope arguments.
 - Temporary LLM diagnostics log only safe booleans/presence flags for config, provider call failure, deterministic fallback usage, and model output validation failure.
+- Do not log prompts, raw provider responses, API keys, tokens, auth headers, full Gemini request URIs, or sensitive payloads.
 - Fake/test interpreters and fake provider clients are used in tests only; no provider SDK package, committed API key, committed secret, live test call, database change, migration, or MCP dependency has been added.
 - Approved capability names are `catalog_search`, `catalog_get_product`, `orders_search`, `orders_get_order`, and `orders_analyze`.
 - Assistant code dispatches existing Catalog and Orders read-side CQRS queries through `ISender`.
@@ -315,6 +320,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 35. Assistant LLM Provider Integration Phase 3
 36. Assistant LLM Configuration Diagnostics
 37. Backend Admin Product Management
+38. Backend Gemini LLM Provider
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -328,6 +334,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 - MCP authorization policy/rate limiting planning
 - Assistant frontend integration planning
 - Assistant provider-specific production configuration or operational smoke testing
+- Gemini POC demo validation with real account/project rate-limit expectations
 - Catalog write authorization policy refinement
 - Integration testing setup
 - Platform features (API versioning, configuration validation, etc.)
@@ -601,10 +608,10 @@ dotnet test Ecommerce.sln
 
 # Expected output:
 # - Build: success
-# - Catalog Unit Tests: 75 passed
-# - Auth Unit Tests: 65 passed
+# - Catalog Unit Tests: 83 passed
+# - Auth Unit Tests: 68 passed
 # - Orders Unit Tests: 23 passed
-# - Architecture Tests: 88 passed
+# - Architecture Tests: 101 passed
 ```
 
 If a local API process is running and locks `src/Api/Ecommerce.Api/bin/Debug/net9.0/Ecommerce.Api.dll`, either stop that process intentionally or verify with isolated artifacts:

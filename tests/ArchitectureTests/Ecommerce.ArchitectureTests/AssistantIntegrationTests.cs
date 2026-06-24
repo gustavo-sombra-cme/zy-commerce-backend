@@ -12,6 +12,7 @@ using Ecommerce.Orders.Application.Orders.ListOrdersForBuyer;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -84,7 +85,9 @@ public sealed class AssistantIntegrationTests
 
         Assert.Contains("Configure<AssistantLlmOptions>", source, StringComparison.Ordinal);
         Assert.Contains("AddScoped<IAssistantIntentInterpreter>", source, StringComparison.Ordinal);
-        Assert.Contains("AddHttpClient<IAssistantLlmClient, HttpAssistantLlmClient>", source, StringComparison.Ordinal);
+        Assert.Contains("AddHttpClient<HttpAssistantLlmClient>", source, StringComparison.Ordinal);
+        Assert.Contains("AddHttpClient<GeminiAssistantLlmClient>", source, StringComparison.Ordinal);
+        Assert.Contains("IsGeminiProvider", source, StringComparison.Ordinal);
         Assert.Contains("LlmAssistantIntentInterpreter", source, StringComparison.Ordinal);
         Assert.Contains("DeterministicAssistantIntentInterpreter", source, StringComparison.Ordinal);
         Assert.Contains("options.Enabled", source, StringComparison.Ordinal);
@@ -211,6 +214,186 @@ public sealed class AssistantIntegrationTests
         Assert.DoesNotContain("Bearer", log, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(promptText, log, StringComparison.Ordinal);
         Assert.DoesNotContain("PROMPT_TEXT_SHOULD_NOT_LOG", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GeminiLlmClient_MissingSecret_ShouldReturnNoPlanWithoutSendingRequest()
+    {
+        var missingSecretName = "ECOMMERCE_ASSISTANT_TEST_MISSING_GEMINI_SECRET_" + Guid.NewGuid().ToString("N");
+        var handler = new CountingHttpMessageHandler();
+        var client = new GeminiAssistantLlmClient(
+            new HttpClient(handler),
+            Options.Create(new AssistantLlmOptions
+            {
+                Enabled = true,
+                Provider = AssistantLlmOptions.GeminiProvider,
+                GeminiEndpoint = "https://example.test/v1beta",
+                GeminiModel = "gemini-test",
+                GeminiApiKeyEnvironmentVariable = missingSecretName
+            }),
+            NullLogger<GeminiAssistantLlmClient>.Instance);
+
+        var planJson = await client.CreateIntentPlanJsonAsync(
+            "Show my recent orders",
+            CancellationToken.None);
+
+        Assert.Null(planJson);
+        Assert.Equal(0, handler.SendCount);
+    }
+
+    [Fact]
+    public async Task GeminiLlmClient_ShouldSendGenerateContentRequestShapeAndParseCandidateText()
+    {
+        const string question = "Could you recap my latest shopping activity?";
+        var handler = new RecordingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """
+                {"candidates":[{"content":{"parts":[{"text":"{\"kind\":\"RecentOrders\",\"tools\":[\"orders_search\"],\"arguments\":{}}"}]}}]}
+                """,
+                Encoding.UTF8,
+                "application/json")
+        });
+        var client = new GeminiAssistantLlmClient(
+            new HttpClient(handler),
+            Options.Create(CreateEnabledGeminiOptions()),
+            NullLogger<GeminiAssistantLlmClient>.Instance);
+
+        var planJson = await client.CreateIntentPlanJsonAsync(
+            question,
+            CancellationToken.None);
+
+        Assert.Equal("""{"kind":"RecentOrders","tools":["orders_search"],"arguments":{}}""", planJson);
+        Assert.Equal(HttpMethod.Post, handler.RequestMethod);
+        Assert.NotNull(handler.RequestUri);
+        Assert.Equal(
+            "https://example.test/v1beta/models/gemini-test:generateContent?key=test-gemini-key",
+            handler.RequestUri!.AbsoluteUri);
+        Assert.Null(handler.AuthorizationHeader);
+        Assert.NotNull(handler.RequestBody);
+
+        using var document = JsonDocument.Parse(handler.RequestBody);
+        var systemText = document.RootElement
+            .GetProperty("systemInstruction")
+            .GetProperty("parts")[0]
+            .GetProperty("text")
+            .GetString();
+        var userText = document.RootElement
+            .GetProperty("contents")[0]
+            .GetProperty("parts")[0]
+            .GetProperty("text")
+            .GetString();
+
+        Assert.Contains("read-only ecommerce backend assistant", systemText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(question, userText);
+        Assert.Equal(0, document.RootElement.GetProperty("generationConfig").GetProperty("temperature").GetInt32());
+        Assert.Equal("application/json", document.RootElement.GetProperty("generationConfig").GetProperty("responseMimeType").GetString());
+        Assert.DoesNotContain("orders", userText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("catalog", userText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GeminiLlmClient_MalformedProviderJson_ShouldReturnNullSafely()
+    {
+        var handler = new RecordingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("not json", Encoding.UTF8, "application/json")
+        });
+        var client = new GeminiAssistantLlmClient(
+            new HttpClient(handler),
+            Options.Create(CreateEnabledGeminiOptions()),
+            NullLogger<GeminiAssistantLlmClient>.Instance);
+
+        var planJson = await client.CreateIntentPlanJsonAsync(
+            "Show my recent orders",
+            CancellationToken.None);
+
+        Assert.Null(planJson);
+    }
+
+    [Fact]
+    public async Task GeminiLlmClient_MissingCandidateText_ShouldReturnNullSafely()
+    {
+        var handler = new RecordingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """
+                {"candidates":[{"content":{"parts":[{}]}}]}
+                """,
+                Encoding.UTF8,
+                "application/json")
+        });
+        var client = new GeminiAssistantLlmClient(
+            new HttpClient(handler),
+            Options.Create(CreateEnabledGeminiOptions()),
+            NullLogger<GeminiAssistantLlmClient>.Instance);
+
+        var planJson = await client.CreateIntentPlanJsonAsync(
+            "Show my recent orders",
+            CancellationToken.None);
+
+        Assert.Null(planJson);
+    }
+
+    [Fact]
+    public async Task GeminiLlmClient_BadRequest_ShouldLogOnlySafeProviderDiagnostics()
+    {
+        const string apiKey = "test-gemini-key";
+        const string promptText = "Show my recent orders with GEMINI_PROMPT_SHOULD_NOT_LOG";
+        var logger = new ListLogger<GeminiAssistantLlmClient>();
+        var handler = new RecordingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent(
+                """
+                {"error":{"code":429,"status":"RESOURCE_EXHAUSTED","message":"Quota exceeded for 'GEMINI_PROMPT_SHOULD_NOT_LOG'."}}
+                """,
+                Encoding.UTF8,
+                "application/json")
+        });
+        var client = new GeminiAssistantLlmClient(
+            new HttpClient(handler),
+            Options.Create(CreateEnabledGeminiOptions()),
+            logger);
+
+        var planJson = await client.CreateIntentPlanJsonAsync(
+            promptText,
+            CancellationToken.None);
+
+        Assert.Null(planJson);
+
+        var log = Assert.Single(logger.Messages);
+        Assert.Contains("statusCode=429", log, StringComparison.Ordinal);
+        Assert.Contains("geminiErrorCode=429", log, StringComparison.Ordinal);
+        Assert.Contains("geminiErrorStatus=RESOURCE_EXHAUSTED", log, StringComparison.Ordinal);
+        Assert.Contains("sanitizedErrorMessage=Quota exceeded for [redacted].", log, StringComparison.Ordinal);
+        Assert.DoesNotContain(apiKey, log, StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", log, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Bearer", log, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(promptText, log, StringComparison.Ordinal);
+        Assert.DoesNotContain("GEMINI_PROMPT_SHOULD_NOT_LOG", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProviderSelection_ShouldChooseGeminiClientWhenConfigured()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IOptions<AssistantLlmOptions>>(Options.Create(CreateEnabledGeminiOptions()));
+        services.AddHttpClient<HttpAssistantLlmClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => new CountingHttpMessageHandler());
+        services.AddHttpClient<GeminiAssistantLlmClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => new CountingHttpMessageHandler());
+        services.AddScoped<IAssistantLlmClient>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<AssistantLlmOptions>>().Value;
+            return options.IsGeminiProvider
+                ? provider.GetRequiredService<GeminiAssistantLlmClient>()
+                : provider.GetRequiredService<HttpAssistantLlmClient>();
+        });
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.IsType<GeminiAssistantLlmClient>(provider.GetRequiredService<IAssistantLlmClient>());
     }
 
     [Theory]
@@ -828,10 +1011,24 @@ public sealed class AssistantIntegrationTests
         new()
         {
             Enabled = true,
+            Provider = AssistantLlmOptions.OpenAiProvider,
             Endpoint = "https://example.test/v1/responses",
             Model = "test-model",
             ApiKey = "test-api-key",
             ApiKeyEnvironmentVariable = string.Empty,
+            TimeoutSeconds = 5,
+            MaxResponseCharacters = 4000
+        };
+
+    private static AssistantLlmOptions CreateEnabledGeminiOptions() =>
+        new()
+        {
+            Enabled = true,
+            Provider = AssistantLlmOptions.GeminiProvider,
+            GeminiEndpoint = "https://example.test/v1beta",
+            GeminiModel = "gemini-test",
+            GeminiApiKey = "test-gemini-key",
+            GeminiApiKeyEnvironmentVariable = string.Empty,
             TimeoutSeconds = 5,
             MaxResponseCharacters = 4000
         };
@@ -935,10 +1132,19 @@ public sealed class AssistantIntegrationTests
     {
         public string? RequestBody { get; private set; }
 
+        public Uri? RequestUri { get; private set; }
+
+        public HttpMethod? RequestMethod { get; private set; }
+
+        public string? AuthorizationHeader { get; private set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            RequestUri = request.RequestUri;
+            RequestMethod = request.Method;
+            AuthorizationHeader = request.Headers.Authorization?.ToString();
             RequestBody = request.Content is null
                 ? null
                 : await request.Content.ReadAsStringAsync(cancellationToken);

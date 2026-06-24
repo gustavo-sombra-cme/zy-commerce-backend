@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-Date: 2026-06-19
+Date: 2026-06-24
 
 The repository is a .NET 9 ASP.NET Core backend for an enterprise e-commerce system. It follows Clean Architecture First, Modular Monolith, Module Isolation, CQRS, and thin controller rules.
 
@@ -271,12 +271,16 @@ Current platform assistant behavior:
 - Hosts protected `POST /api/assistant/query`.
 - Keeps the `POST /api/assistant/query` request/response contract unchanged.
 - Uses `IAssistantIntentInterpreter` with `DeterministicAssistantIntentInterpreter` as the disabled-mode production default.
-- Can use `LlmAssistantIntentInterpreter` when `Assistant:Llm:Enabled` is explicitly enabled and provider endpoint/model/API key configuration is supplied outside committed secrets.
-- The LLM provider adapter uses `HttpClientFactory` and `System.Text.Json`; no provider SDK package was added.
+- Can use `LlmAssistantIntentInterpreter` when `Assistant:Llm:Enabled` is explicitly enabled and provider/model/API key configuration is supplied outside committed secrets.
+- Provider selection defaults to the existing OpenAI-style `HttpAssistantLlmClient`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects `GeminiAssistantLlmClient`.
+- Gemini is supported as a POC/testing provider through `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, optional `ECOMMERCE_ASSISTANT_GEMINI_MODEL` (default `gemini-2.5-flash`), and optional `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT` (default `https://generativelanguage.googleapis.com/v1beta`).
+- Gemini free-tier and rate-limit behavior depends on Google account/project; a ChatGPT/OpenAI subscription is unrelated to Gemini Developer API access.
+- The LLM provider adapters use `HttpClientFactory` and `System.Text.Json`; no provider SDK package was added.
 - Treats interpreter output as an untrusted `AssistantIntentPlan` that must pass `AssistantIntentPlanValidator` before execution.
 - Validates proposed intent kind, tool names, and arguments against the approved read-only assistant capability allowlist.
 - Rejects unknown tools, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
 - No API key, secret, provider SDK package, live test call, database change, migration, or MCP dependency has been added.
+- No prompts, raw provider responses, API keys, JWTs, auth headers, full Gemini request URIs, or sensitive payloads are logged.
 - Assistant implementation lives under `src/Api/Ecommerce.Api/Assistant` with transport in `src/Api/Ecommerce.Api/Controllers/Assistant`.
 - Assistant capabilities are internally allowlisted as:
   - `catalog_search`
@@ -615,6 +619,24 @@ Latest code execution after Backend Admin Product Management:
 - MCP and Assistant allowlists were not expanded with admin tools.
 - Added `docs/demo/features/admin-product-management-demo-slides.md`.
 - Verification results are recorded in the task execution summary.
+
+Latest code execution after Backend Gemini LLM Provider:
+
+- Added Gemini as a selectable external intent-interpretation provider for the existing read-only Ecommerce Assistant.
+- Added `GeminiAssistantLlmClient` using REST, `HttpClientFactory`, and `System.Text.Json`.
+- Added provider selection so OpenAI/default configuration keeps using `HttpAssistantLlmClient`, while `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects Gemini.
+- Gemini request handling sends only the read-only intent-planning instruction and user question to `generateContent`; it does not send catalog data, order history, secrets, JWTs, or auth headers.
+- Gemini response handling extracts `candidates[].content.parts[].text` and returns it to the existing parser and validator.
+- Deterministic fallback remains available for disabled configuration, missing API key/config, provider failure, rate limit, timeout, malformed provider JSON, missing candidate text, and invalid `AssistantIntentPlan` JSON.
+- Assistant remains read-only and does not expose admin tools or write tools.
+- No frontend, MCP, database, migration, Domain, Application, Infrastructure, package, assistant response contract, or committed secret changes were created.
+- `dotnet restore Ecommerce.sln`: passed
+- `dotnet build Ecommerce.sln`: passed
+- `dotnet test Ecommerce.sln`: passed
+- Catalog unit tests: 83 passed
+- Auth unit tests: 68 passed
+- Orders unit tests: 23 passed
+- Architecture tests: 101 passed
 
 ## Intentionally Absent
 

@@ -255,6 +255,11 @@ Notes:
 - Orders analysis is scoped to the authenticated JWT `sub` claim.
 - Does not accept `userId` or `buyerId` from the request body.
 - Mutating, admin, SQL, token, database, internal, unclear, and cross-user requests return a safe unsupported response with `unsupported=true`, `dataScope="none"`, empty `toolsUsed`, `responseType=null`, and `data=null`.
+- The assistant can use deterministic interpretation, the existing OpenAI-style provider, or Gemini as a POC/testing provider through backend configuration only; the HTTP request/response contract does not change.
+- Gemini configuration uses `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini`, `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, `ECOMMERCE_ASSISTANT_GEMINI_MODEL`, and `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT`. API keys must come from environment variables, user secrets, or another non-committed configuration provider.
+- Gemini free-tier and rate-limit behavior depends on the Google account/project. A ChatGPT/OpenAI subscription is unrelated to Gemini Developer API access.
+- Provider failures, rate limits, timeouts, malformed provider JSON, and invalid intent-plan JSON fall back safely to deterministic behavior where possible.
+- The assistant does not log prompts, raw provider responses, API keys, JWTs, auth headers, or sensitive payloads.
 
 ### GET /health/live
 
