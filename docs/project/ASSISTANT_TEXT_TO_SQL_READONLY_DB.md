@@ -2,14 +2,14 @@
 
 ## Status
 
-Task 1 adds only the database boundary for a future Text-to-SQL Assistant:
+Task 1 added only the database boundary for a future Text-to-SQL Assistant:
 
 - `assistant` schema
 - approved read-only assistant views
 - manual read-only SQL principal setup guidance
 - local-only read-only connection string guidance
 
-Text-to-SQL runtime execution is not implemented yet. The existing assistant behavior is unchanged.
+Task 2 adds a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`. The existing assistant behavior is unchanged because Text-to-SQL planning and assistant orchestration wiring are not implemented yet.
 
 ## Migration Strategy
 
@@ -137,7 +137,7 @@ Permission rules:
 
 ## Read-Only Connection Strings
 
-Future Task 2 will use:
+Task 2 and later Text-to-SQL runtime code use:
 
 ```text
 ConnectionStrings:AssistantCatalogReadOnly
@@ -145,6 +145,22 @@ ConnectionStrings:AssistantOrdersReadOnly
 ```
 
 Store it locally only, using user secrets or environment variables. Do not add a real password to `appsettings.json` or `appsettings.Development.json`.
+
+The normal application connection strings (`Catalog`, `Orders`, and `Auth`) must not be used for Text-to-SQL execution.
+
+## Task 2 Validator And Executor
+
+Task 2 adds only the backend SQL safety layer:
+
+- `Assistant:TextToSql:Enabled` defaults to `false`.
+- `Assistant:TextToSql:MaxRows` defaults to `50`.
+- `Assistant:TextToSql:CommandTimeoutSeconds` defaults to `5`.
+- SQL must validate before execution.
+- Only `SELECT TOP (n)` queries over approved `assistant` views are accepted.
+- Orders queries must include `BuyerUserId = @CurrentUserId`; the backend supplies `@CurrentUserId`.
+- Raw database errors are not returned to callers.
+- The LLM Text-to-SQL planner is not implemented until Task 3.
+- Assistant orchestration is not wired to Text-to-SQL until Task 4.
 
 User secrets example:
 

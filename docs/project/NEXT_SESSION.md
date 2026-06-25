@@ -32,6 +32,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Backend Gemini LLM Provider (`GeminiAssistantLlmClient`, selectable via configuration, POC/testing only)
 - Assistant LLM Configuration Diagnostics (temporary safe boolean/presence logs for LLM config, provider failure, fallback, and validation failure)
 - Assistant Text-to-SQL read-only database boundary (`assistant` schema/views and manual read-only DB setup docs only)
+- Assistant Text-to-SQL SQL validator and read-only executor behind disabled feature flag
 - Backend Admin Product Management (`RequireAdmin`, Auth role claims, Admin-only Catalog writes, product price update)
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
@@ -120,8 +121,10 @@ All approved projects exist and build successfully:
 - Assistant code must not call EF Core DbContexts, repositories, Domain objects, module internals, write commands, or MCP protocol packages directly.
 - Orders assistant analysis is owner-scoped to the authenticated JWT `sub` claim.
 - Unsafe, mutating, admin, SQL, token, database, internal, unclear, and cross-user requests return safe unsupported responses.
-- Text-to-SQL runtime behavior is not implemented yet. Task 1 only added the future SQL data boundary through approved read-only views under the `assistant` schema and setup guidance in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
+- Task 2 added a dormant Text-to-SQL SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
+- The LLM SQL planner and assistant orchestration wiring are not implemented yet, so existing assistant endpoint behavior is unchanged.
 - Future Text-to-SQL execution must use `ConnectionStrings:AssistantCatalogReadOnly` for Catalog views and `ConnectionStrings:AssistantOrdersReadOnly` for Orders views. Each read-only principal should have `SELECT` only on the `assistant` schema/views in its own database and no direct base-table permissions.
+- Do not use normal application DB connection strings for Text-to-SQL execution.
 - ADR-004 documents the assistant orchestration boundary and safety model.
 - ADR-005 documents untrusted assistant intent interpretation and plan validation.
 - ADR-006 documents config-gated LLM provider integration.

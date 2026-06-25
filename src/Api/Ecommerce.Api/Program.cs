@@ -1,5 +1,6 @@
 using System.Text;
 using Ecommerce.Api.Assistant;
+using Ecommerce.Api.Assistant.TextToSql;
 using Ecommerce.Api.HealthChecks;
 using Ecommerce.Api.Middleware;
 using Ecommerce.Api.Mcp;
@@ -52,6 +53,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.Configure<AssistantLlmOptions>(
     builder.Configuration.GetSection(AssistantLlmOptions.SectionName));
+builder.Services.Configure<AssistantTextToSqlOptions>(
+    builder.Configuration.GetSection(AssistantTextToSqlOptions.SectionName));
 builder.Services.AddScoped<AssistantOrchestrator>();
 builder.Services.AddSingleton<AssistantSafetyPolicy>();
 builder.Services.AddSingleton<AssistantIntentRouter>();
@@ -76,6 +79,9 @@ builder.Services.AddScoped<IAssistantIntentInterpreter>(services =>
         : services.GetRequiredService<DeterministicAssistantIntentInterpreter>();
 });
 builder.Services.AddSingleton<AssistantToolRegistry>();
+builder.Services.AddSingleton<AssistantSqlValidator>();
+builder.Services.AddSingleton<IAssistantSqlConnectionFactory, AssistantSqlConnectionFactory>();
+builder.Services.AddScoped<IAssistantReadOnlySqlExecutor, AssistantReadOnlySqlExecutor>();
 
 builder.Services.AddSwaggerGen(options =>
 {

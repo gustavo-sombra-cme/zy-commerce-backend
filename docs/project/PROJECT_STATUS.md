@@ -281,8 +281,10 @@ Current platform assistant behavior:
 - Rejects unknown tools, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
 - No API key, secret, provider SDK package, live test call, runtime database access, or MCP dependency has been added for LLM provider execution.
 - Assistant Text-to-SQL Task 1 added only the future database boundary: approved read-only views under the `assistant` schema and setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
-- Text-to-SQL validation, execution, SQL planning, and assistant orchestration wiring are not implemented yet.
+- Assistant Text-to-SQL Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
+- Text-to-SQL LLM planning and assistant orchestration wiring are not implemented yet, so existing assistant behavior is unchanged.
 - Future Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`.
+- Text-to-SQL execution must not use normal application DB connection strings.
 - No prompts, raw provider responses, API keys, JWTs, auth headers, full Gemini request URIs, or sensitive payloads are logged.
 - Assistant implementation lives under `src/Api/Ecommerce.Api/Assistant` with transport in `src/Api/Ecommerce.Api/Controllers/Assistant`.
 - Assistant capabilities are internally allowlisted as:
