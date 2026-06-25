@@ -51,6 +51,7 @@
 - Assistant Text-to-SQL read-only database boundary
 - Assistant Text-to-SQL SQL validator and read-only executor behind disabled feature flag
 - Assistant Text-to-SQL LLM planner behind dormant DI registration
+- Assistant Text-to-SQL orchestration behind disabled feature flag with existing assistant fallback
 - Project memory documentation
 - AGENT.md router and instruction file split
 - Prompt standardization and reusable prompt template setup
@@ -159,7 +160,7 @@ Potential future phases:
 - Gemini POC demo validation against account/project-specific free-tier and rate-limit behavior
 - Additional provider-specific payload tuning if future providers are introduced
 - Additional read-only analysis tools after explicit approval
-- Text-to-SQL assistant orchestration wiring after the dormant planner layer is approved
+- Text-to-SQL operational smoke testing after local read-only connection strings are configured
 - Dedicated assistant authorization policy or rate limiting
 - Frontend integration with the backend assistant endpoint
 
@@ -169,7 +170,6 @@ Not currently started:
 - order creation through assistant
 - Catalog writes through assistant
 - raw SQL or database tools
-- Text-to-SQL assistant orchestration wiring
 - admin analytics
 - cross-user analysis
 - committed LLM API keys or secrets

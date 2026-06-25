@@ -283,8 +283,10 @@ Current platform assistant behavior:
 - Assistant Text-to-SQL Task 1 added only the future database boundary: approved read-only views under the `assistant` schema and setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
 - Assistant Text-to-SQL Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
 - Assistant Text-to-SQL Task 3 added a dormant LLM planner that builds the approved-view Text-to-SQL prompt, parses the model JSON plan fail-closed, and reuses the existing assistant LLM client abstraction.
-- Text-to-SQL assistant orchestration wiring is not implemented yet, so existing assistant behavior is unchanged.
-- Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before any future execution.
+- Assistant Text-to-SQL Task 4 wired `AssistantOrchestrator` to use Text-to-SQL as an optional first-pass path only when `Assistant:TextToSql:Enabled` is true.
+- Existing assistant behavior is unchanged when the feature flag is disabled, and existing assistant behavior remains fallback when Text-to-SQL fails safely.
+- Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before execution.
+- Generated SQL is not returned to the frontend, and `genericTable` is not exposed publicly.
 - Future Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`.
 - Text-to-SQL execution must not use normal application DB connection strings.
 - No prompts, raw provider responses, API keys, JWTs, auth headers, full Gemini request URIs, or sensitive payloads are logged.
@@ -671,6 +673,15 @@ Latest code execution after Assistant Text-to-SQL LLM Planner:
 - Reused the existing assistant LLM client abstraction; no provider SDK package, committed secret, live provider test, database migration, frontend, MCP, or assistant orchestration wiring was added.
 - Candidate SQL remains untrusted and must pass the Task 2 validator before any future execution.
 - Existing `POST /api/assistant/query` behavior remains unchanged.
+
+Latest code execution after Assistant Text-to-SQL Orchestration:
+
+- Wired `AssistantOrchestrator` to try Text-to-SQL first only when `Assistant:TextToSql:Enabled` is true.
+- Added `AssistantTextToSqlResponseMapper` for existing frontend-compatible assistant response shapes.
+- Preserved the existing assistant flow when Text-to-SQL is disabled and as fallback for planner unsupported output, validation failure, executor failure, unmappable shapes, and safe exceptions.
+- Orders Text-to-SQL execution passes the authenticated backend buyer id as `@CurrentUserId`; catalog execution remains public catalog scope.
+- Generated SQL, raw SQL errors, prompts, provider responses, secrets, JWTs, and connection strings are not returned to the frontend.
+- No frontend, MCP, database migration, schema, admin tool, write behavior, provider SDK, or committed secret changes were added.
 
 ## Intentionally Absent
 
