@@ -412,6 +412,9 @@ public sealed class AssistantIntegrationTests
         Assert.Contains("Configure<AssistantTextToSqlOptions>", program, StringComparison.Ordinal);
         Assert.Contains("AssistantSqlValidator", program, StringComparison.Ordinal);
         Assert.Contains("IAssistantReadOnlySqlExecutor", program, StringComparison.Ordinal);
+        Assert.Contains("IAssistantTextToSqlPlanner", program, StringComparison.Ordinal);
+        Assert.Contains("AssistantTextToSqlPromptBuilder", program, StringComparison.Ordinal);
+        Assert.Contains("AssistantTextToSqlPlanParser", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AssistantOrchestrator", program[program.IndexOf("IAssistantReadOnlySqlExecutor", StringComparison.Ordinal)..], StringComparison.Ordinal);
         Assert.Contains("\"TextToSql\"", appsettings, StringComparison.Ordinal);
         Assert.Contains("\"Enabled\": false", appsettings, StringComparison.Ordinal);
@@ -564,6 +567,119 @@ public sealed class AssistantIntegrationTests
         Assert.False(result.Succeeded);
         Assert.Equal("SQL execution failed.", result.Error);
         Assert.DoesNotContain("raw sql failure text", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TextToSqlPrompt_ShouldDescribeOnlyApprovedAssistantViewsAndRules()
+    {
+        var prompt = new AssistantTextToSqlPromptBuilder().BuildPrompt("what is my last order");
+
+        Assert.Contains("assistant.v_ProductSearch", prompt, StringComparison.Ordinal);
+        Assert.Contains("assistant.v_ProductDetails", prompt, StringComparison.Ordinal);
+        Assert.Contains("assistant.v_MyOrders", prompt, StringComparison.Ordinal);
+        Assert.Contains("assistant.v_MyOrderLines", prompt, StringComparison.Ordinal);
+        Assert.Contains("assistant.v_MyOrderSummary", prompt, StringComparison.Ordinal);
+        Assert.Contains("BuyerUserId = @CurrentUserId", prompt, StringComparison.Ordinal);
+        Assert.Contains("deactivate product", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"supported\":false", prompt, StringComparison.Ordinal);
+        Assert.Contains("ProductId, Name, Sku, Description, PriceAmount, IsActive, CreatedAt, UpdatedAt", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrencyCode", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("auth.Users", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("catalog.Products", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("orders.Orders", prompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TextToSqlPlanParser_ShouldAcceptSupportedPlan()
+    {
+        var plan = new AssistantTextToSqlPlanParser().Parse(
+            """
+            {"supported":true,"dataSource":"orders","sql":"SELECT TOP (1) OrderId FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId","resultShape":"orderList","reason":null}
+            """,
+            4000);
+
+        Assert.True(plan.Supported);
+        Assert.Equal(AssistantSqlDataSource.Orders, plan.DataSource);
+        Assert.Equal(AssistantTextToSqlResultShape.OrderList, plan.ResultShape);
+        Assert.NotNull(plan.Sql);
+    }
+
+    [Fact]
+    public void TextToSqlPlanParser_ShouldAcceptUnsupportedPlan()
+    {
+        var plan = new AssistantTextToSqlPlanParser().Parse(
+            """
+            {"supported":false,"dataSource":null,"sql":null,"resultShape":"unsupported","reason":"Write or admin operations are not supported."}
+            """,
+            4000);
+
+        Assert.False(plan.Supported);
+        Assert.Null(plan.DataSource);
+        Assert.Null(plan.Sql);
+        Assert.Equal(AssistantTextToSqlResultShape.Unsupported, plan.ResultShape);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("""{"supported":true,"dataSource":"orders","resultShape":"orderList"}""")]
+    [InlineData("""{"supported":false,"dataSource":null,"sql":"SELECT TOP (1) ProductId FROM assistant.v_ProductSearch","resultShape":"unsupported"}""")]
+    [InlineData("""{"supported":true,"dataSource":"inventory","sql":"SELECT TOP (1) ProductId FROM assistant.v_ProductSearch","resultShape":"productList"}""")]
+    [InlineData("""{"supported":true,"dataSource":"catalog","sql":"SELECT TOP (1) ProductId FROM assistant.v_ProductSearch","resultShape":"chart"}""")]
+    public void TextToSqlPlanParser_ShouldFailClosedForInvalidOutput(string json)
+    {
+        var plan = new AssistantTextToSqlPlanParser().Parse(json, 4000);
+
+        Assert.False(plan.Supported);
+        Assert.Null(plan.DataSource);
+        Assert.Null(plan.Sql);
+        Assert.Equal(AssistantTextToSqlResultShape.Unsupported, plan.ResultShape);
+    }
+
+    [Theory]
+    [InlineData(
+        "what is my last order",
+        """{"supported":true,"dataSource":"orders","sql":"SELECT TOP (1) OrderId, Status, TotalAmount, CreatedAt, LineCount FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId ORDER BY CreatedAt DESC","resultShape":"orderList","reason":null}""",
+        AssistantSqlDataSource.Orders,
+        AssistantTextToSqlResultShape.OrderList)]
+    [InlineData(
+        "find products under 20",
+        """{"supported":true,"dataSource":"catalog","sql":"SELECT TOP (10) ProductId, Name, Sku, Description, PriceAmount, IsActive FROM assistant.v_ProductSearch WHERE IsActive = 1 AND PriceAmount < 20 ORDER BY PriceAmount ASC","resultShape":"productList","reason":null}""",
+        AssistantSqlDataSource.Catalog,
+        AssistantTextToSqlResultShape.ProductList)]
+    public async Task LlmTextToSqlPlanner_ShouldParseProviderPlanAndPassSqlValidator(
+        string question,
+        string providerJson,
+        AssistantSqlDataSource expectedDataSource,
+        AssistantTextToSqlResultShape expectedShape)
+    {
+        var client = new RecordingLlmClient(providerJson);
+        var planner = CreateTextToSqlPlanner(client, enabled: true);
+
+        var plan = await planner.PlanAsync(question, CancellationToken.None);
+
+        Assert.True(plan.Supported);
+        Assert.Equal(expectedDataSource, plan.DataSource);
+        Assert.Equal(expectedShape, plan.ResultShape);
+        Assert.NotNull(plan.Sql);
+        Assert.Single(client.Questions);
+        Assert.Contains(question, client.Questions[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrencyCode", client.Questions[0], StringComparison.Ordinal);
+
+        var validation = CreateSqlValidator().Validate(new AssistantSqlQuery(plan.DataSource!.Value, plan.Sql!));
+        Assert.True(validation.IsValid, validation.Reason);
+    }
+
+    [Fact]
+    public async Task LlmTextToSqlPlanner_ShouldReturnUnsupportedWhenDisabledWithoutCallingProvider()
+    {
+        var client = new RecordingLlmClient(
+            """{"supported":true,"dataSource":"catalog","sql":"SELECT TOP (1) ProductId FROM assistant.v_ProductSearch","resultShape":"productList","reason":null}""");
+        var planner = CreateTextToSqlPlanner(client, enabled: false);
+
+        var plan = await planner.PlanAsync("find products", CancellationToken.None);
+
+        Assert.False(plan.Supported);
+        Assert.Empty(client.Questions);
     }
 
     [Theory]
@@ -1225,6 +1341,25 @@ public sealed class AssistantIntegrationTests
                 CommandTimeoutSeconds = timeoutSeconds
             }),
             NullLogger<AssistantReadOnlySqlExecutor>.Instance);
+
+    private static LlmAssistantTextToSqlPlanner CreateTextToSqlPlanner(
+        IAssistantLlmClient client,
+        bool enabled = true) =>
+        new(
+            client,
+            new AssistantTextToSqlPromptBuilder(),
+            new AssistantTextToSqlPlanParser(),
+            Options.Create(new AssistantLlmOptions
+            {
+                Enabled = enabled,
+                Endpoint = "https://example.test/v1/responses",
+                Model = "test-model",
+                ApiKey = "test-api-key",
+                ApiKeyEnvironmentVariable = string.Empty,
+                TimeoutSeconds = 5,
+                MaxResponseCharacters = 4000
+            }),
+            NullLogger<LlmAssistantTextToSqlPlanner>.Instance);
 
     private sealed class RecordingSender(Func<object, object?> handler) : ISender
     {

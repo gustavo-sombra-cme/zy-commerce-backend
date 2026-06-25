@@ -9,7 +9,9 @@ Task 1 added only the database boundary for a future Text-to-SQL Assistant:
 - manual read-only SQL principal setup guidance
 - local-only read-only connection string guidance
 
-Task 2 adds a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`. The existing assistant behavior is unchanged because Text-to-SQL planning and assistant orchestration wiring are not implemented yet.
+Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`.
+
+Task 3 adds a dormant LLM Text-to-SQL planner that can ask the configured assistant LLM client for a candidate SQL plan and parse it fail-closed. The planner is not wired into assistant orchestration yet, so existing `POST /api/assistant/query` behavior is unchanged.
 
 ## Migration Strategy
 
@@ -159,8 +161,22 @@ Task 2 adds only the backend SQL safety layer:
 - Only `SELECT TOP (n)` queries over approved `assistant` views are accepted.
 - Orders queries must include `BuyerUserId = @CurrentUserId`; the backend supplies `@CurrentUserId`.
 - Raw database errors are not returned to callers.
-- The LLM Text-to-SQL planner is not implemented until Task 3.
+- The LLM Text-to-SQL planner is separate and dormant until assistant orchestration is wired in a later task.
 - Assistant orchestration is not wired to Text-to-SQL until Task 4.
+
+## Task 3 Dormant LLM Planner
+
+Task 3 adds only the backend planning layer:
+
+- The planner builds a strict prompt containing only the approved assistant views and their actual columns.
+- The model must return JSON only: `supported`, `dataSource`, `sql`, `resultShape`, and `reason`.
+- Parser behavior is fail-closed for malformed JSON, unsupported data sources, unsupported result shapes, missing SQL, or contradictory unsupported plans.
+- The planner reuses the existing configured `IAssistantLlmClient` abstraction and does not add a provider SDK.
+- No catalog rows, order rows, JWTs, connection strings, read-only passwords, or secrets are sent to the LLM by this planner.
+- Prompt text and raw provider responses are not logged.
+- Candidate SQL remains untrusted and must pass the Task 2 validator before any future execution.
+- The planner is registered in DI but is not called by `AssistantOrchestrator`.
+- Existing assistant behavior remains unchanged until a later orchestration task explicitly wires Text-to-SQL.
 
 User secrets example:
 
