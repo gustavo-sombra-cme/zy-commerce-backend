@@ -34,6 +34,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Assistant Text-to-SQL read-only database boundary (`assistant` schema/views and manual read-only DB setup docs only)
 - Assistant Text-to-SQL SQL validator and read-only executor behind disabled feature flag
 - Assistant Text-to-SQL LLM planner behind dormant DI registration
+- Assistant Text-to-SQL orchestration behind disabled feature flag with existing assistant fallback
 - Backend Admin Product Management (`RequireAdmin`, Auth role claims, Admin-only Catalog writes, product price update)
 - Swagger Authentication Integration
 - Revisit Swagger/API Authentication Integration
@@ -124,8 +125,10 @@ All approved projects exist and build successfully:
 - Unsafe, mutating, admin, SQL, token, database, internal, unclear, and cross-user requests return safe unsupported responses.
 - Task 2 added a dormant Text-to-SQL SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
 - Task 3 added a dormant Text-to-SQL LLM planner that builds an approved-view prompt, parses the JSON plan fail-closed, and reuses the configured assistant LLM client abstraction.
-- Assistant orchestration wiring is not implemented yet, so existing assistant endpoint behavior is unchanged.
-- Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before any future execution.
+- Task 4 wired Text-to-SQL into `AssistantOrchestrator` as an optional first-pass path only when `Assistant:TextToSql:Enabled` is true.
+- Existing assistant endpoint behavior remains unchanged when the feature flag is disabled, and the existing assistant flow remains fallback when Text-to-SQL fails safely.
+- Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before execution.
+- Generated SQL is not returned to the frontend, and `genericTable` is not exposed publicly.
 - Future Text-to-SQL execution must use `ConnectionStrings:AssistantCatalogReadOnly` for Catalog views and `ConnectionStrings:AssistantOrdersReadOnly` for Orders views. Each read-only principal should have `SELECT` only on the `assistant` schema/views in its own database and no direct base-table permissions.
 - Do not use normal application DB connection strings for Text-to-SQL execution.
 - ADR-004 documents the assistant orchestration boundary and safety model.
@@ -336,6 +339,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 39. Assistant Text-to-SQL read-only database boundary
 40. Assistant Text-to-SQL SQL validator and read-only executor
 41. Assistant Text-to-SQL LLM planner
+42. Assistant Text-to-SQL orchestration behind feature flag
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -360,7 +364,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was Assistant Text-to-SQL LLM planner. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Assistant Text-to-SQL orchestration behind feature flag. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 **How to Proceed:**
 

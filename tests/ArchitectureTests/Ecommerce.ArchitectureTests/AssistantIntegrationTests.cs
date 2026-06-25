@@ -415,6 +415,7 @@ public sealed class AssistantIntegrationTests
         Assert.Contains("IAssistantTextToSqlPlanner", program, StringComparison.Ordinal);
         Assert.Contains("AssistantTextToSqlPromptBuilder", program, StringComparison.Ordinal);
         Assert.Contains("AssistantTextToSqlPlanParser", program, StringComparison.Ordinal);
+        Assert.Contains("AssistantTextToSqlResponseMapper", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AssistantOrchestrator", program[program.IndexOf("IAssistantReadOnlySqlExecutor", StringComparison.Ordinal)..], StringComparison.Ordinal);
         Assert.Contains("\"TextToSql\"", appsettings, StringComparison.Ordinal);
         Assert.Contains("\"Enabled\": false", appsettings, StringComparison.Ordinal);
@@ -680,6 +681,333 @@ public sealed class AssistantIntegrationTests
 
         Assert.False(plan.Supported);
         Assert.Empty(client.Questions);
+    }
+
+    [Fact]
+    public async Task TextToSqlDisabled_ShouldKeepExistingAssistantPathAndNotCallPlannerOrExecutor()
+    {
+        var buyerId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            ListOrdersForBuyerQuery query => new OrdersPagedResult(
+                new[] { new OrderSummaryDto(Guid.NewGuid(), "Created", 42.50m, DateTimeOffset.UtcNow, 2) },
+                query.PageNumber ?? 1,
+                query.PageSize ?? 100,
+                1),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var planner = new RecordingTextToSqlPlanner(OrdersPlan());
+        var executor = new RecordingTextToSqlExecutor(OrderListResult());
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: false);
+
+        var response = await orchestrator.QueryAsync("Show my recent orders", buyerId, CancellationToken.None);
+
+        Assert.Empty(planner.Questions);
+        Assert.Empty(executor.Queries);
+        Assert.Single(sender.Requests);
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_LastOrder_ShouldUseOrdersPlanAndCurrentUserScope()
+    {
+        var buyerId = Guid.NewGuid();
+        var sender = new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called."));
+        var planner = new RecordingTextToSqlPlanner(OrdersPlan(top: 1));
+        var executor = new RecordingTextToSqlExecutor(OrderListResult());
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("what is my last order", buyerId, CancellationToken.None);
+
+        var query = Assert.Single(executor.Queries);
+        Assert.Equal(AssistantSqlDataSource.Orders, query.DataSource);
+        Assert.Equal(buyerId, query.CurrentUserId);
+        Assert.Contains("@CurrentUserId", query.Sql, StringComparison.Ordinal);
+        Assert.Contains("TOP (1)", query.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(sender.Requests);
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
+        Assert.DoesNotContain("SELECT", response.Answer, StringComparison.OrdinalIgnoreCase);
+
+        var data = Assert.IsType<AssistantOrdersData>(response.Data);
+        Assert.Single(data.Orders);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_RecentOrders_ShouldMapAssistantOrdersData()
+    {
+        var planner = new RecordingTextToSqlPlanner(OrdersPlan());
+        var executor = new RecordingTextToSqlExecutor(OrderListResult());
+        var orchestrator = CreateOrchestrator(
+            new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called.")),
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("show my recent orders", Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
+        Assert.Contains(AssistantToolNames.OrdersSearch, response.ToolsUsed);
+        Assert.Equal("authenticated-user", response.DataScope);
+        Assert.IsType<AssistantOrdersData>(response.Data);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_TotalSpend_ShouldMapSpendSummary()
+    {
+        var planner = new RecordingTextToSqlPlanner(new AssistantTextToSqlPlan(
+            true,
+            AssistantSqlDataSource.Orders,
+            "SELECT TOP (1) TotalOrders, TotalSpend, LastOrderDate FROM assistant.v_MyOrderSummary WHERE BuyerUserId = @CurrentUserId",
+            AssistantTextToSqlResultShape.SpendSummary,
+            null));
+        var executor = new RecordingTextToSqlExecutor(new AssistantSqlResult(
+            true,
+            ["TotalOrders", "TotalSpend", "LastOrderDate"],
+            [new AssistantSqlRow(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["TotalOrders"] = 2,
+                ["TotalSpend"] = 50.50m,
+                ["LastOrderDate"] = DateTimeOffset.UtcNow
+            })],
+            1,
+            false));
+        var orchestrator = CreateOrchestrator(
+            new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called.")),
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("what is my total spend", Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(AssistantResponseTypes.OrderSummaryAnalytics, response.ResponseType);
+        Assert.Contains(AssistantToolNames.OrdersAnalyze, response.ToolsUsed);
+
+        var data = Assert.IsType<AssistantOrderSummaryAnalyticsData>(response.Data);
+        Assert.Equal(50.50m, data.TotalSpend);
+        Assert.Equal(2, data.OrderCount);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_ProductList_ShouldUseCatalogDataSourceAndMapProducts()
+    {
+        var productId = Guid.NewGuid();
+        var planner = new RecordingTextToSqlPlanner(new AssistantTextToSqlPlan(
+            true,
+            AssistantSqlDataSource.Catalog,
+            "SELECT TOP (10) ProductId, Name, Sku, Description, PriceAmount, IsActive FROM assistant.v_ProductSearch WHERE IsActive = 1 AND PriceAmount < 20 ORDER BY PriceAmount ASC",
+            AssistantTextToSqlResultShape.ProductList,
+            null));
+        var executor = new RecordingTextToSqlExecutor(new AssistantSqlResult(
+            true,
+            ["ProductId", "Name", "Sku", "Description", "PriceAmount", "IsActive"],
+            [new AssistantSqlRow(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ProductId"] = productId,
+                ["Name"] = "Tea",
+                ["Sku"] = "SKU-1",
+                ["Description"] = "Green tea",
+                ["PriceAmount"] = 9.99m,
+                ["IsActive"] = true
+            })],
+            1,
+            false));
+        var orchestrator = CreateOrchestrator(
+            new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called.")),
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("find products under 20", Guid.NewGuid(), CancellationToken.None);
+
+        var query = Assert.Single(executor.Queries);
+        Assert.Equal(AssistantSqlDataSource.Catalog, query.DataSource);
+        Assert.Null(query.CurrentUserId);
+        Assert.Equal("catalog-public", response.DataScope);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
+        Assert.Contains(AssistantToolNames.CatalogSearch, response.ToolsUsed);
+
+        var data = Assert.IsType<AssistantCatalogProductsData>(response.Data);
+        var product = Assert.Single(data.Products);
+        Assert.Equal(productId, product.ProductId);
+        Assert.Equal(9.99m, product.Price);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_PlannerUnsupported_ShouldFallBackSafely()
+    {
+        var buyerId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            ListOrdersForBuyerQuery query => new OrdersPagedResult(Array.Empty<OrderSummaryDto>(), query.PageNumber ?? 1, query.PageSize ?? 100, 0),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var planner = new RecordingTextToSqlPlanner(AssistantTextToSqlPlan.Unsupported());
+        var executor = new RecordingTextToSqlExecutor(OrderListResult());
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("show my recent orders", buyerId, CancellationToken.None);
+
+        Assert.Single(planner.Questions);
+        Assert.Empty(executor.Queries);
+        Assert.Single(sender.Requests);
+        Assert.False(response.Unsupported);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_ValidatorFailure_ShouldFallBackSafely()
+    {
+        var buyerId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            ListOrdersForBuyerQuery query => new OrdersPagedResult(Array.Empty<OrderSummaryDto>(), query.PageNumber ?? 1, query.PageSize ?? 100, 0),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var planner = new RecordingTextToSqlPlanner(new AssistantTextToSqlPlan(
+            true,
+            AssistantSqlDataSource.Orders,
+            "SELECT TOP (1) OrderId FROM assistant.v_MyOrders",
+            AssistantTextToSqlResultShape.OrderList,
+            null));
+        var executor = new RecordingTextToSqlExecutor(OrderListResult());
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("show my recent orders", buyerId, CancellationToken.None);
+
+        Assert.Empty(executor.Queries);
+        Assert.Single(sender.Requests);
+        Assert.False(response.Unsupported);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_ExecutorFailure_ShouldFallBackSafely()
+    {
+        var buyerId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            ListOrdersForBuyerQuery query => new OrdersPagedResult(Array.Empty<OrderSummaryDto>(), query.PageNumber ?? 1, query.PageSize ?? 100, 0),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var executor = new RecordingTextToSqlExecutor(AssistantSqlResult.Failure());
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: new RecordingTextToSqlPlanner(OrdersPlan()),
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("show my recent orders", buyerId, CancellationToken.None);
+
+        Assert.Single(executor.Queries);
+        Assert.Single(sender.Requests);
+        Assert.False(response.Unsupported);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_EmptyOrderResult_ShouldReturnSupportedEmptyState()
+    {
+        var orchestrator = CreateOrchestrator(
+            new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called.")),
+            textToSqlPlanner: new RecordingTextToSqlPlanner(OrdersPlan()),
+            textToSqlExecutor: new RecordingTextToSqlExecutor(new AssistantSqlResult(
+                true,
+                ["OrderId", "Status", "TotalAmount", "CreatedAt", "LineCount"],
+                Array.Empty<AssistantSqlRow>(),
+                0,
+                false)),
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("show my recent orders", Guid.NewGuid(), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
+        Assert.Contains("do not have any recent orders", response.Answer, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_GenericTable_ShouldFallBackToExistingAssistantPath()
+    {
+        var sender = new RecordingSender(request => request switch
+        {
+            ListOrdersForBuyerQuery query => new OrdersPagedResult(Array.Empty<OrderSummaryDto>(), query.PageNumber ?? 1, query.PageSize ?? 100, 0),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var planner = new RecordingTextToSqlPlanner(new AssistantTextToSqlPlan(
+            true,
+            AssistantSqlDataSource.Orders,
+            "SELECT TOP (1) OrderId FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId",
+            AssistantTextToSqlResultShape.GenericTable,
+            null));
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: planner,
+            textToSqlExecutor: new RecordingTextToSqlExecutor(new AssistantSqlResult(
+                true,
+                ["OrderId"],
+                [new AssistantSqlRow(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["OrderId"] = Guid.NewGuid()
+                })],
+                1,
+                false)),
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("show my recent orders", Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Single(sender.Requests);
+        Assert.False(response.Unsupported);
+        Assert.NotEqual("genericTable", response.ResponseType);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_WriteRequest_ShouldRemainUnsupported()
+    {
+        var sender = new RecordingSender(_ => throw new InvalidOperationException("Sender should not be called."));
+        var planner = new RecordingTextToSqlPlanner(AssistantTextToSqlPlan.Unsupported());
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: planner,
+            textToSqlExecutor: new RecordingTextToSqlExecutor(AssistantSqlResult.Failure()),
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("deactivate product", Guid.NewGuid(), CancellationToken.None);
+
+        Assert.True(response.Unsupported);
+        Assert.Empty(sender.Requests);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_ShouldNotIncludeGeneratedSqlInResponse()
+    {
+        var sql = OrdersPlan().Sql!;
+        var orchestrator = CreateOrchestrator(
+            new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called.")),
+            textToSqlPlanner: new RecordingTextToSqlPlanner(OrdersPlan()),
+            textToSqlExecutor: new RecordingTextToSqlExecutor(OrderListResult()),
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("what is my last order", Guid.NewGuid(), CancellationToken.None);
+        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.DoesNotContain(sql, json, StringComparison.Ordinal);
+        Assert.DoesNotContain("SELECT", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("assistant.v_MyOrders", json, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -1239,7 +1567,10 @@ public sealed class AssistantIntegrationTests
 
     private static AssistantOrchestrator CreateOrchestrator(
         ISender sender,
-        IAssistantIntentInterpreter? interpreter = null)
+        IAssistantIntentInterpreter? interpreter = null,
+        IAssistantTextToSqlPlanner? textToSqlPlanner = null,
+        IAssistantReadOnlySqlExecutor? textToSqlExecutor = null,
+        bool textToSqlEnabled = false)
     {
         var safetyPolicy = new AssistantSafetyPolicy();
         var intentRouter = new AssistantIntentRouter(safetyPolicy);
@@ -1252,8 +1583,18 @@ public sealed class AssistantIntegrationTests
             deterministicInterpreter,
             new AssistantIntentPlanValidator(toolRegistry, safetyPolicy),
             toolRegistry,
+            textToSqlPlanner ?? new RecordingTextToSqlPlanner(AssistantTextToSqlPlan.Unsupported()),
+            CreateSqlValidator(),
+            textToSqlExecutor ?? new RecordingTextToSqlExecutor(AssistantSqlResult.Failure()),
+            new AssistantTextToSqlResponseMapper(),
             NullLogger<AssistantOrchestrator>.Instance,
-            Options.Create(new AssistantLlmOptions()));
+            Options.Create(new AssistantLlmOptions()),
+            Options.Create(new AssistantTextToSqlOptions
+            {
+                Enabled = textToSqlEnabled,
+                MaxRows = 50,
+                CommandTimeoutSeconds = 5
+            }));
     }
 
     private static LlmAssistantIntentInterpreter CreateLlmInterpreter(
@@ -1361,6 +1702,33 @@ public sealed class AssistantIntegrationTests
             }),
             NullLogger<LlmAssistantTextToSqlPlanner>.Instance);
 
+    private static AssistantTextToSqlPlan OrdersPlan(int top = 10) =>
+        new(
+            true,
+            AssistantSqlDataSource.Orders,
+            $"SELECT TOP ({top}) OrderId, Status, TotalAmount, CreatedAt, LineCount FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId ORDER BY CreatedAt DESC",
+            AssistantTextToSqlResultShape.OrderList,
+            null);
+
+    private static AssistantSqlResult OrderListResult()
+    {
+        var orderId = Guid.NewGuid();
+
+        return new AssistantSqlResult(
+            true,
+            ["OrderId", "Status", "TotalAmount", "CreatedAt", "LineCount"],
+            [new AssistantSqlRow(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["OrderId"] = orderId,
+                ["Status"] = "Created",
+                ["TotalAmount"] = 42.50m,
+                ["CreatedAt"] = DateTimeOffset.UtcNow,
+                ["LineCount"] = 2
+            })],
+            1,
+            false);
+    }
+
     private sealed class RecordingSender(Func<object, object?> handler) : ISender
     {
         public List<object> Requests { get; } = [];
@@ -1395,6 +1763,32 @@ public sealed class AssistantIntegrationTests
         public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+    }
+
+    private sealed class RecordingTextToSqlPlanner(AssistantTextToSqlPlan plan) : IAssistantTextToSqlPlanner
+    {
+        public List<string> Questions { get; } = [];
+
+        public Task<AssistantTextToSqlPlan> PlanAsync(
+            string question,
+            CancellationToken cancellationToken)
+        {
+            Questions.Add(question);
+            return Task.FromResult(plan);
+        }
+    }
+
+    private sealed class RecordingTextToSqlExecutor(AssistantSqlResult result) : IAssistantReadOnlySqlExecutor
+    {
+        public List<AssistantSqlQuery> Queries { get; } = [];
+
+        public Task<AssistantSqlResult> ExecuteAsync(
+            AssistantSqlQuery query,
+            CancellationToken cancellationToken)
+        {
+            Queries.Add(query);
+            return Task.FromResult(result);
         }
     }
 

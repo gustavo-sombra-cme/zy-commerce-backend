@@ -1,4 +1,5 @@
 using System.Globalization;
+using Ecommerce.Api.Assistant.TextToSql;
 using Ecommerce.Catalog.Application.Products.GetProductById;
 using Ecommerce.Catalog.Application.Products.SearchProducts;
 using Ecommerce.Orders.Application.Orders.GetOrderById;
@@ -15,8 +16,13 @@ public sealed class AssistantOrchestrator(
     DeterministicAssistantIntentInterpreter deterministicIntentInterpreter,
     AssistantIntentPlanValidator intentPlanValidator,
     AssistantToolRegistry toolRegistry,
+    IAssistantTextToSqlPlanner textToSqlPlanner,
+    AssistantSqlValidator textToSqlValidator,
+    IAssistantReadOnlySqlExecutor textToSqlExecutor,
+    AssistantTextToSqlResponseMapper textToSqlResponseMapper,
     ILogger<AssistantOrchestrator> logger,
-    IOptions<AssistantLlmOptions> llmOptions)
+    IOptions<AssistantLlmOptions> llmOptions,
+    IOptions<AssistantTextToSqlOptions> textToSqlOptions)
 {
     private const int AnalysisPageNumber = 1;
     private const int AnalysisPageSize = 100;
@@ -26,6 +32,15 @@ public sealed class AssistantOrchestrator(
         Guid buyerId,
         CancellationToken cancellationToken)
     {
+        if (textToSqlOptions.Value.IsEnabled)
+        {
+            var textToSqlResponse = await TryQueryTextToSqlAsync(question, buyerId, cancellationToken);
+            if (textToSqlResponse is not null)
+            {
+                return textToSqlResponse;
+            }
+        }
+
         var intent = await InterpretIntentAsync(question, cancellationToken);
 
         return intent.Kind switch
@@ -41,6 +56,66 @@ public sealed class AssistantOrchestrator(
             AssistantIntentKind.CatalogGetProduct => await CatalogGetProductAsync(intent.ProductId, cancellationToken),
             _ => Unsupported()
         };
+    }
+
+    private async Task<AssistantQueryResponse?> TryQueryTextToSqlAsync(
+        string question,
+        Guid buyerId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var plan = await textToSqlPlanner.PlanAsync(question, cancellationToken);
+            if (!plan.Supported
+                || plan.DataSource is null
+                || string.IsNullOrWhiteSpace(plan.Sql))
+            {
+                LogTextToSqlFallback("planner");
+                return null;
+            }
+
+            var query = new AssistantSqlQuery(
+                plan.DataSource.Value,
+                plan.Sql,
+                plan.DataSource == AssistantSqlDataSource.Orders ? buyerId : null);
+            var validation = textToSqlValidator.Validate(query);
+            if (!validation.IsValid)
+            {
+                LogTextToSqlFallback("validation");
+                return null;
+            }
+
+            var result = await textToSqlExecutor.ExecuteAsync(query, cancellationToken);
+            if (!result.Succeeded)
+            {
+                LogTextToSqlFallback("execution");
+                return null;
+            }
+
+            var response = textToSqlResponseMapper.Map(plan, result);
+            if (response is null)
+            {
+                LogTextToSqlFallback("mapping");
+            }
+
+            return response;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            LogTextToSqlFallback("exception");
+            return null;
+        }
+    }
+
+    private void LogTextToSqlFallback(string stage)
+    {
+        logger.LogInformation(
+            "Assistant Text-to-SQL orchestration fell back to existing assistant flow at stage={Stage}.",
+            stage);
     }
 
     private async Task<AssistantIntent> InterpretIntentAsync(
