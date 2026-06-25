@@ -1,8 +1,13 @@
 using System.Net;
+using System.Collections;
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Ecommerce.Api.Assistant;
+using Ecommerce.Api.Assistant.TextToSql;
 using Ecommerce.Api.Controllers.Assistant;
 using CatalogPagedResult = Ecommerce.Catalog.Application.Abstractions.PagedResult<Ecommerce.Catalog.Application.Products.SearchProducts.ProductListItemDto>;
 using Ecommerce.Catalog.Application.Products.GetProductById;
@@ -12,6 +17,7 @@ using Ecommerce.Orders.Application.Orders.ListOrdersForBuyer;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -394,6 +400,170 @@ public sealed class AssistantIntegrationTests
         using var provider = services.BuildServiceProvider();
 
         Assert.IsType<GeminiAssistantLlmClient>(provider.GetRequiredService<IAssistantLlmClient>());
+    }
+
+    [Fact]
+    public void Program_ShouldRegisterDormantTextToSqlServices()
+    {
+        var root = ProjectGraph.GetRootPath();
+        var program = File.ReadAllText(Path.Combine(root, "src", "Api", "Ecommerce.Api", "Program.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(root, "src", "Api", "Ecommerce.Api", "appsettings.json"));
+
+        Assert.Contains("Configure<AssistantTextToSqlOptions>", program, StringComparison.Ordinal);
+        Assert.Contains("AssistantSqlValidator", program, StringComparison.Ordinal);
+        Assert.Contains("IAssistantReadOnlySqlExecutor", program, StringComparison.Ordinal);
+        Assert.DoesNotContain("AssistantOrchestrator", program[program.IndexOf("IAssistantReadOnlySqlExecutor", StringComparison.Ordinal)..], StringComparison.Ordinal);
+        Assert.Contains("\"TextToSql\"", appsettings, StringComparison.Ordinal);
+        Assert.Contains("\"Enabled\": false", appsettings, StringComparison.Ordinal);
+        Assert.DoesNotContain("AssistantCatalogReadOnly", appsettings, StringComparison.Ordinal);
+        Assert.DoesNotContain("AssistantOrdersReadOnly", appsettings, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) ProductId, Name FROM assistant.v_ProductSearch")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (5) ProductId, Sku FROM assistant.v_ProductDetails WHERE IsActive = 1")]
+    [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (10) OrderId, Status FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId")]
+    [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (10) ProductName FROM assistant.v_MyOrderLines WHERE BuyerUserId = @CurrentUserId")]
+    public void SqlValidator_ShouldAcceptApprovedAssistantViewQueries(
+        AssistantSqlDataSource dataSource,
+        string sql)
+    {
+        var result = CreateSqlValidator(maxRows: 50).Validate(new AssistantSqlQuery(dataSource, sql));
+
+        Assert.True(result.IsValid, result.Reason);
+    }
+
+    [Theory]
+    [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (10) OrderId FROM assistant.v_MyOrders")]
+    [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (10) OrderId FROM assistant.v_MyOrders WHERE BuyerUserId = '00000000-0000-0000-0000-000000000001'")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) Id FROM catalog.Products")]
+    [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (10) Id FROM orders.Orders WHERE BuyerUserId = @CurrentUserId")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) Id FROM dbo.Products")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) Id FROM auth.Users")]
+    [InlineData(AssistantSqlDataSource.Catalog, "INSERT INTO assistant.v_ProductSearch (Name) VALUES ('x')")]
+    [InlineData(AssistantSqlDataSource.Catalog, "UPDATE assistant.v_ProductSearch SET Name = 'x'")]
+    [InlineData(AssistantSqlDataSource.Catalog, "DELETE FROM assistant.v_ProductSearch")]
+    [InlineData(AssistantSqlDataSource.Catalog, "MERGE assistant.v_ProductSearch AS target USING assistant.v_ProductDetails AS source ON 1 = 1")]
+    [InlineData(AssistantSqlDataSource.Catalog, "CREATE VIEW assistant.bad AS SELECT 1")]
+    [InlineData(AssistantSqlDataSource.Catalog, "ALTER VIEW assistant.v_ProductSearch AS SELECT 1")]
+    [InlineData(AssistantSqlDataSource.Catalog, "DROP VIEW assistant.v_ProductSearch")]
+    [InlineData(AssistantSqlDataSource.Catalog, "TRUNCATE TABLE assistant.v_ProductSearch")]
+    [InlineData(AssistantSqlDataSource.Catalog, "EXEC dbo.SomeProcedure")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) ProductId FROM assistant.v_ProductSearch; SELECT TOP (10) ProductId FROM assistant.v_ProductDetails")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) ProductId FROM assistant.v_ProductSearch -- nope")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) ProductId FROM assistant.v_ProductSearch /* nope */")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) name FROM sys.objects")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) table_name FROM INFORMATION_SCHEMA.TABLES")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) ProductId FROM assistant.v_Unsafe")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) OrderId FROM assistant.v_MyOrders")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT ProductId FROM assistant.v_ProductSearch")]
+    [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (51) ProductId FROM assistant.v_ProductSearch")]
+    public void SqlValidator_ShouldRejectUnsafeOrUnapprovedQueries(
+        AssistantSqlDataSource dataSource,
+        string sql)
+    {
+        var result = CreateSqlValidator(maxRows: 50).Validate(new AssistantSqlQuery(dataSource, sql));
+
+        Assert.False(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(AssistantSqlDataSource.Catalog, "Server=.;Database=CatalogReadOnly;Trusted_Connection=True;TrustServerCertificate=True")]
+    [InlineData(AssistantSqlDataSource.Orders, "Server=.;Database=OrdersReadOnly;Trusted_Connection=True;TrustServerCertificate=True")]
+    public void SqlConnectionFactory_ShouldChooseReadOnlyConnectionForDataSource(
+        AssistantSqlDataSource dataSource,
+        string expectedConnectionString)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:AssistantCatalogReadOnly"] = "Server=.;Database=CatalogReadOnly;Trusted_Connection=True;TrustServerCertificate=True",
+                ["ConnectionStrings:AssistantOrdersReadOnly"] = "Server=.;Database=OrdersReadOnly;Trusted_Connection=True;TrustServerCertificate=True"
+            })
+            .Build();
+
+        using var connection = new AssistantSqlConnectionFactory(configuration).CreateConnection(dataSource);
+
+        Assert.Equal(expectedConnectionString, connection.ConnectionString);
+    }
+
+    [Fact]
+    public void SqlConnectionFactory_ShouldRequireConfiguredConnectionString()
+    {
+        var configuration = new ConfigurationBuilder().Build();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            new AssistantSqlConnectionFactory(configuration).CreateConnection(AssistantSqlDataSource.Catalog));
+    }
+
+    [Fact]
+    public async Task SqlExecutor_ShouldApplyTimeoutMaxRowsAndCurrentUserParameter()
+    {
+        var currentUserId = Guid.NewGuid();
+        var command = new RecordingDbCommand(new FakeDbDataReader(
+            ["OrderId"],
+            [
+                [Guid.NewGuid()],
+                [Guid.NewGuid()]
+            ]));
+        var executor = CreateSqlExecutor(new RecordingDbConnection(command), maxRows: 1, timeoutSeconds: 7);
+
+        var result = await executor.ExecuteAsync(
+            new AssistantSqlQuery(
+                AssistantSqlDataSource.Orders,
+                "SELECT TOP (1) OrderId FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId",
+                currentUserId),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.Truncated);
+        Assert.Equal(1, result.RowCount);
+        Assert.Equal(7, command.CommandTimeout);
+        var parameter = Assert.Single(command.Parameters.Cast<DbParameter>());
+        Assert.Equal("@CurrentUserId", parameter.ParameterName);
+        Assert.Equal(currentUserId, parameter.Value);
+    }
+
+    [Fact]
+    public async Task SqlExecutor_ShouldNotExecuteWhenFeatureFlagDisabled()
+    {
+        var command = new RecordingDbCommand(new FakeDbDataReader(["ProductId"], [[Guid.NewGuid()]]));
+        var executor = new AssistantReadOnlySqlExecutor(
+            CreateSqlValidator(),
+            new StubSqlConnectionFactory(new RecordingDbConnection(command)),
+            Options.Create(new AssistantTextToSqlOptions
+            {
+                Enabled = false,
+                MaxRows = 50,
+                CommandTimeoutSeconds = 5
+            }),
+            NullLogger<AssistantReadOnlySqlExecutor>.Instance);
+
+        var result = await executor.ExecuteAsync(
+            new AssistantSqlQuery(
+                AssistantSqlDataSource.Catalog,
+                "SELECT TOP (1) ProductId FROM assistant.v_ProductSearch"),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(ConnectionState.Closed, command.Connection?.State ?? ConnectionState.Closed);
+    }
+
+    [Fact]
+    public async Task SqlExecutor_ShouldReturnGenericFailureWithoutRawExceptionText()
+    {
+        var command = new RecordingDbCommand(new InvalidOperationException("raw sql failure text"));
+        var executor = CreateSqlExecutor(new RecordingDbConnection(command));
+
+        var result = await executor.ExecuteAsync(
+            new AssistantSqlQuery(
+                AssistantSqlDataSource.Catalog,
+                "SELECT TOP (1) ProductId FROM assistant.v_ProductSearch"),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("SQL execution failed.", result.Error);
+        Assert.DoesNotContain("raw sql failure text", result.Error, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -1033,6 +1203,29 @@ public sealed class AssistantIntegrationTests
             MaxResponseCharacters = 4000
         };
 
+    private static AssistantSqlValidator CreateSqlValidator(int maxRows = 50) =>
+        new(Options.Create(new AssistantTextToSqlOptions
+        {
+            Enabled = true,
+            MaxRows = maxRows,
+            CommandTimeoutSeconds = 5
+        }));
+
+    private static AssistantReadOnlySqlExecutor CreateSqlExecutor(
+        DbConnection connection,
+        int maxRows = 50,
+        int timeoutSeconds = 5) =>
+        new(
+            CreateSqlValidator(maxRows),
+            new StubSqlConnectionFactory(connection),
+            Options.Create(new AssistantTextToSqlOptions
+            {
+                Enabled = true,
+                MaxRows = maxRows,
+                CommandTimeoutSeconds = timeoutSeconds
+            }),
+            NullLogger<AssistantReadOnlySqlExecutor>.Instance);
+
     private sealed class RecordingSender(Func<object, object?> handler) : ISender
     {
         public List<object> Requests { get; } = [];
@@ -1151,6 +1344,316 @@ public sealed class AssistantIntegrationTests
 
             return handler(request);
         }
+    }
+
+    private sealed class StubSqlConnectionFactory(DbConnection connection) : IAssistantSqlConnectionFactory
+    {
+        public DbConnection CreateConnection(AssistantSqlDataSource dataSource) => connection;
+    }
+
+    private sealed class RecordingDbConnection(DbCommand command) : DbConnection
+    {
+        private ConnectionState _state = ConnectionState.Closed;
+
+        [AllowNull]
+        public override string ConnectionString { get; set; } = string.Empty;
+
+        public override string Database => "Fake";
+
+        public override string DataSource => "Fake";
+
+        public override string ServerVersion => "1";
+
+        public override ConnectionState State => _state;
+
+        public override void ChangeDatabase(string databaseName)
+        {
+        }
+
+        public override void Close()
+        {
+            _state = ConnectionState.Closed;
+        }
+
+        public override void Open()
+        {
+            _state = ConnectionState.Open;
+        }
+
+        public override Task OpenAsync(CancellationToken cancellationToken)
+        {
+            _state = ConnectionState.Open;
+            return Task.CompletedTask;
+        }
+
+        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) =>
+            throw new NotSupportedException();
+
+        protected override DbCommand CreateDbCommand() => command;
+    }
+
+    private sealed class RecordingDbCommand : DbCommand
+    {
+        private readonly DbDataReader? _reader;
+        private readonly Exception? _exception;
+        private readonly RecordingDbParameterCollection _parameters = new();
+
+        public RecordingDbCommand(DbDataReader reader)
+        {
+            _reader = reader;
+        }
+
+        public RecordingDbCommand(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        [AllowNull]
+        public override string CommandText { get; set; } = string.Empty;
+
+        public override int CommandTimeout { get; set; }
+
+        public override CommandType CommandType { get; set; }
+
+        public override bool DesignTimeVisible { get; set; }
+
+        public override UpdateRowSource UpdatedRowSource { get; set; }
+
+        protected override DbConnection? DbConnection { get; set; }
+
+        protected override DbParameterCollection DbParameterCollection => _parameters;
+
+        protected override DbTransaction? DbTransaction { get; set; }
+
+        public override void Cancel()
+        {
+        }
+
+        public override int ExecuteNonQuery() => throw new NotSupportedException();
+
+        public override object? ExecuteScalar() => throw new NotSupportedException();
+
+        public override void Prepare()
+        {
+        }
+
+        protected override DbParameter CreateDbParameter() => new RecordingDbParameter();
+
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+        {
+            if (_exception is not null)
+            {
+                throw _exception;
+            }
+
+            return _reader ?? throw new InvalidOperationException("No reader configured.");
+        }
+    }
+
+    private sealed class RecordingDbParameter : DbParameter
+    {
+        public override DbType DbType { get; set; }
+
+        public override ParameterDirection Direction { get; set; } = ParameterDirection.Input;
+
+        public override bool IsNullable { get; set; }
+
+        [AllowNull]
+        public override string ParameterName { get; set; } = string.Empty;
+
+        [AllowNull]
+        public override string SourceColumn { get; set; } = string.Empty;
+
+        public override object? Value { get; set; }
+
+        public override bool SourceColumnNullMapping { get; set; }
+
+        public override int Size { get; set; }
+
+        public override void ResetDbType()
+        {
+        }
+    }
+
+    private sealed class RecordingDbParameterCollection : DbParameterCollection
+    {
+        private readonly List<DbParameter> _parameters = [];
+
+        public override int Count => _parameters.Count;
+
+        public override object SyncRoot => ((ICollection)_parameters).SyncRoot;
+
+        public override int Add(object value)
+        {
+            _parameters.Add((DbParameter)value);
+            return _parameters.Count - 1;
+        }
+
+        public override void AddRange(Array values)
+        {
+            foreach (var value in values)
+            {
+                Add(value);
+            }
+        }
+
+        public override void Clear() => _parameters.Clear();
+
+        public override bool Contains(object value) => _parameters.Contains((DbParameter)value);
+
+        public override bool Contains(string value) =>
+            _parameters.Any(parameter => string.Equals(parameter.ParameterName, value, StringComparison.Ordinal));
+
+        public override void CopyTo(Array array, int index) =>
+            ((ICollection)_parameters).CopyTo(array, index);
+
+        public override IEnumerator GetEnumerator() => _parameters.GetEnumerator();
+
+        public override int IndexOf(object value) => _parameters.IndexOf((DbParameter)value);
+
+        public override int IndexOf(string parameterName) =>
+            _parameters.FindIndex(parameter => string.Equals(parameter.ParameterName, parameterName, StringComparison.Ordinal));
+
+        public override void Insert(int index, object value) => _parameters.Insert(index, (DbParameter)value);
+
+        public override void Remove(object value) => _parameters.Remove((DbParameter)value);
+
+        public override void RemoveAt(int index) => _parameters.RemoveAt(index);
+
+        public override void RemoveAt(string parameterName)
+        {
+            var index = IndexOf(parameterName);
+            if (index >= 0)
+            {
+                RemoveAt(index);
+            }
+        }
+
+        protected override DbParameter GetParameter(int index) => _parameters[index];
+
+        protected override DbParameter GetParameter(string parameterName) =>
+            _parameters[IndexOf(parameterName)];
+
+        protected override void SetParameter(int index, DbParameter value) => _parameters[index] = value;
+
+        protected override void SetParameter(string parameterName, DbParameter value)
+        {
+            var index = IndexOf(parameterName);
+            if (index >= 0)
+            {
+                _parameters[index] = value;
+                return;
+            }
+
+            _parameters.Add(value);
+        }
+    }
+
+    private sealed class FakeDbDataReader(
+        IReadOnlyList<string> columns,
+        IReadOnlyList<object?[]> rows) : DbDataReader
+    {
+        private int _rowIndex = -1;
+
+        public override int FieldCount => columns.Count;
+
+        public override bool HasRows => rows.Count > 0;
+
+        public override bool IsClosed => false;
+
+        public override int RecordsAffected => 0;
+
+        public override int Depth => 0;
+
+        public override object this[int ordinal] => GetValue(ordinal);
+
+        public override object this[string name] => GetValue(GetOrdinal(name));
+
+        public override bool Read()
+        {
+            if (_rowIndex + 1 >= rows.Count)
+            {
+                return false;
+            }
+
+            _rowIndex++;
+            return true;
+        }
+
+        public override Task<bool> ReadAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(Read());
+
+        public override bool NextResult() => false;
+
+        public override string GetName(int ordinal) => columns[ordinal];
+
+        public override int GetOrdinal(string name)
+        {
+            for (var index = 0; index < columns.Count; index++)
+            {
+                if (string.Equals(columns[index], name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
+        public override object GetValue(int ordinal) => rows[_rowIndex][ordinal]!;
+
+        public override bool IsDBNull(int ordinal) => GetValue(ordinal) is null or DBNull;
+
+        public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken) =>
+            Task.FromResult(IsDBNull(ordinal));
+
+        public override string GetDataTypeName(int ordinal) => GetFieldType(ordinal).Name;
+
+        public override Type GetFieldType(int ordinal) =>
+            rows.Count == 0 || rows[0][ordinal] is null ? typeof(object) : rows[0][ordinal]!.GetType();
+
+        public override int GetValues(object[] values)
+        {
+            var count = Math.Min(values.Length, FieldCount);
+            for (var index = 0; index < count; index++)
+            {
+                values[index] = GetValue(index);
+            }
+
+            return count;
+        }
+
+        public override IEnumerator GetEnumerator() => rows.GetEnumerator();
+
+        public override bool GetBoolean(int ordinal) => (bool)GetValue(ordinal);
+
+        public override byte GetByte(int ordinal) => (byte)GetValue(ordinal);
+
+        public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) =>
+            throw new NotSupportedException();
+
+        public override char GetChar(int ordinal) => (char)GetValue(ordinal);
+
+        public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) =>
+            throw new NotSupportedException();
+
+        public override Guid GetGuid(int ordinal) => (Guid)GetValue(ordinal);
+
+        public override short GetInt16(int ordinal) => (short)GetValue(ordinal);
+
+        public override int GetInt32(int ordinal) => (int)GetValue(ordinal);
+
+        public override long GetInt64(int ordinal) => (long)GetValue(ordinal);
+
+        public override float GetFloat(int ordinal) => (float)GetValue(ordinal);
+
+        public override double GetDouble(int ordinal) => (double)GetValue(ordinal);
+
+        public override string GetString(int ordinal) => (string)GetValue(ordinal);
+
+        public override decimal GetDecimal(int ordinal) => (decimal)GetValue(ordinal);
+
+        public override DateTime GetDateTime(int ordinal) => (DateTime)GetValue(ordinal);
     }
 
     private sealed class ListLogger<T> : ILogger<T>
