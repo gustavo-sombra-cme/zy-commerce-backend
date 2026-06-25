@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-Date: 2026-06-24
+Date: 2026-06-25
 
 The repository is a .NET 9 ASP.NET Core backend for an enterprise e-commerce system. It follows Clean Architecture First, Modular Monolith, Module Isolation, CQRS, and thin controller rules.
 
@@ -282,7 +282,9 @@ Current platform assistant behavior:
 - No API key, secret, provider SDK package, live test call, runtime database access, or MCP dependency has been added for LLM provider execution.
 - Assistant Text-to-SQL Task 1 added only the future database boundary: approved read-only views under the `assistant` schema and setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
 - Assistant Text-to-SQL Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
-- Text-to-SQL LLM planning and assistant orchestration wiring are not implemented yet, so existing assistant behavior is unchanged.
+- Assistant Text-to-SQL Task 3 added a dormant LLM planner that builds the approved-view Text-to-SQL prompt, parses the model JSON plan fail-closed, and reuses the existing assistant LLM client abstraction.
+- Text-to-SQL assistant orchestration wiring is not implemented yet, so existing assistant behavior is unchanged.
+- Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before any future execution.
 - Future Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`.
 - Text-to-SQL execution must not use normal application DB connection strings.
 - No prompts, raw provider responses, API keys, JWTs, auth headers, full Gemini request URIs, or sensitive payloads are logged.
@@ -660,6 +662,15 @@ Latest code execution after Backend Gemini LLM Provider:
 - Auth unit tests: 68 passed
 - Orders unit tests: 23 passed
 - Architecture tests: 101 passed
+
+Latest code execution after Assistant Text-to-SQL LLM Planner:
+
+- Added a dormant Text-to-SQL planner under `src/Api/Ecommerce.Api/Assistant/TextToSql`.
+- Added approved-view prompt generation for Catalog and Orders assistant views using only actual view columns.
+- Added fail-closed JSON plan parsing for `supported`, `dataSource`, `sql`, `resultShape`, and `reason`.
+- Reused the existing assistant LLM client abstraction; no provider SDK package, committed secret, live provider test, database migration, frontend, MCP, or assistant orchestration wiring was added.
+- Candidate SQL remains untrusted and must pass the Task 2 validator before any future execution.
+- Existing `POST /api/assistant/query` behavior remains unchanged.
 
 ## Intentionally Absent
 

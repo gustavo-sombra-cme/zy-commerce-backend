@@ -82,6 +82,9 @@ builder.Services.AddSingleton<AssistantToolRegistry>();
 builder.Services.AddSingleton<AssistantSqlValidator>();
 builder.Services.AddSingleton<IAssistantSqlConnectionFactory, AssistantSqlConnectionFactory>();
 builder.Services.AddScoped<IAssistantReadOnlySqlExecutor, AssistantReadOnlySqlExecutor>();
+builder.Services.AddSingleton<AssistantTextToSqlPromptBuilder>();
+builder.Services.AddSingleton<AssistantTextToSqlPlanParser>();
+builder.Services.AddScoped<IAssistantTextToSqlPlanner, LlmAssistantTextToSqlPlanner>();
 
 builder.Services.AddSwaggerGen(options =>
 {

@@ -137,7 +137,9 @@ Platform assistant orchestration is API-only:
 - API keys must come only from environment variables or user secrets/non-committed configuration providers. Do not put API keys in `appsettings*.json`.
 - Assistant Text-to-SQL Task 1 added the future database boundary: the `assistant` schema and approved read-only views in the separate Catalog and Orders databases, plus setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
 - Assistant Text-to-SQL Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
-- LLM SQL planning and assistant orchestration wiring are not implemented yet, so existing `POST /api/assistant/query` behavior is unchanged.
+- Assistant Text-to-SQL Task 3 added a dormant LLM planner under `src/Api/Ecommerce.Api/Assistant/TextToSql`. It builds the approved-view prompt, parses the model JSON plan fail-closed, and reuses the existing assistant LLM client abstraction.
+- Assistant orchestration wiring is not implemented yet, so existing `POST /api/assistant/query` behavior is unchanged.
+- Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before any future execution.
 - Future Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`. Do not commit real values or passwords.
 - Do not use normal application DB connection strings for Text-to-SQL execution.
 - The assistant read-only SQL principals must be granted `SELECT` only on the `assistant` schema/views in their owning databases and no direct access to base Catalog, Orders, or Auth tables.
