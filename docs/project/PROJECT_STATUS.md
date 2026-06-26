@@ -281,12 +281,13 @@ Current platform assistant behavior:
 - Rejects unknown tools, unsafe questions, mutating/admin/SQL/cross-user plans, and model-provided `userId`/`buyerId` scope.
 - No API key, secret, provider SDK package, live test call, runtime database access, or MCP dependency has been added for LLM provider execution.
 - Assistant Text-to-SQL Task 1 added only the future database boundary: approved read-only views under the `assistant` schema and setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
-- Assistant Text-to-SQL Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
-- Assistant Text-to-SQL Task 3 added a dormant LLM planner that builds the approved-view Text-to-SQL prompt, parses the model JSON plan fail-closed, and reuses the existing assistant LLM client abstraction.
+- Assistant Text-to-SQL Task 2 added a SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
+- Assistant Text-to-SQL Task 3 added an LLM planner that builds the approved-view Text-to-SQL prompt, parses the model JSON plan fail-closed, and reuses the existing assistant LLM client abstraction.
 - Assistant Text-to-SQL Task 4 wired `AssistantOrchestrator` to use Text-to-SQL as an optional first-pass path only when `Assistant:TextToSql:Enabled` is true.
 - Existing assistant behavior is unchanged when the feature flag is disabled, and existing assistant behavior remains fallback when Text-to-SQL fails safely.
 - Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before execution.
 - Generated SQL is not returned to the frontend, and `genericTable` is not exposed publicly.
+- Assistant Text-to-SQL Task 5A cleaned stale documentation/status/test naming only. Deterministic fallback, the existing CQRS assistant flow, response DTOs, tool names, and feature-flag behavior remain in place.
 - Future Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`.
 - Text-to-SQL execution must not use normal application DB connection strings.
 - No prompts, raw provider responses, API keys, JWTs, auth headers, full Gemini request URIs, or sensitive payloads are logged.
@@ -682,6 +683,14 @@ Latest code execution after Assistant Text-to-SQL Orchestration:
 - Orders Text-to-SQL execution passes the authenticated backend buyer id as `@CurrentUserId`; catalog execution remains public catalog scope.
 - Generated SQL, raw SQL errors, prompts, provider responses, secrets, JWTs, and connection strings are not returned to the frontend.
 - No frontend, MCP, database migration, schema, admin tool, write behavior, provider SDK, or committed secret changes were added.
+
+Latest code execution after Conservative Assistant Text-to-SQL Status Cleanup:
+
+- Updated project documentation to describe Text-to-SQL as feature-flagged and wired rather than fully dormant.
+- Clarified that the existing CQRS assistant flow remains the fallback path when Text-to-SQL is disabled or fails safely.
+- Clarified that Task 5A did not remove deterministic fallback, the existing CQRS assistant flow, response DTOs, tool names, or feature-flag behavior.
+- Renamed stale Text-to-SQL registration test wording from dormant to feature-flagged.
+- No runtime behavior, frontend, MCP, database schema, migration, response contract, tool name, or secret changes were added.
 
 ## Intentionally Absent
 
