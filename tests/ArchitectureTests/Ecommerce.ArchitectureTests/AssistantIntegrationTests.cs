@@ -403,7 +403,7 @@ public sealed class AssistantIntegrationTests
     }
 
     [Fact]
-    public void Program_ShouldRegisterDormantTextToSqlServices()
+    public void Program_ShouldRegisterFeatureFlaggedTextToSqlServices()
     {
         var root = ProjectGraph.GetRootPath();
         var program = File.ReadAllText(Path.Combine(root, "src", "Api", "Ecommerce.Api", "Program.cs"));

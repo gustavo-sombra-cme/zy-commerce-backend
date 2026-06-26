@@ -50,8 +50,9 @@
 - ADR for config-gated assistant LLM provider integration
 - Assistant Text-to-SQL read-only database boundary
 - Assistant Text-to-SQL SQL validator and read-only executor behind disabled feature flag
-- Assistant Text-to-SQL LLM planner behind dormant DI registration
+- Assistant Text-to-SQL LLM planner behind feature-flagged orchestration
 - Assistant Text-to-SQL orchestration behind disabled feature flag with existing assistant fallback
+- Conservative Assistant Text-to-SQL status cleanup
 - Project memory documentation
 - AGENT.md router and instruction file split
 - Prompt standardization and reusable prompt template setup

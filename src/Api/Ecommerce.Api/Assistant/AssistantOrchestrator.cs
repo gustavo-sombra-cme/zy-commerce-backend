@@ -32,6 +32,7 @@ public sealed class AssistantOrchestrator(
         Guid buyerId,
         CancellationToken cancellationToken)
     {
+        // Text-to-SQL is an optional first-pass path; the existing CQRS assistant flow remains the fallback.
         if (textToSqlOptions.Value.IsEnabled)
         {
             var textToSqlResponse = await TryQueryTextToSqlAsync(question, buyerId, cancellationToken);

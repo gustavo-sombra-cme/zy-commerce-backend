@@ -2,18 +2,20 @@
 
 ## Status
 
-Task 1 added only the database boundary for a future Text-to-SQL Assistant:
+Task 1 added the database boundary for the Text-to-SQL Assistant:
 
 - `assistant` schema
 - approved read-only assistant views
 - manual read-only SQL principal setup guidance
 - local-only read-only connection string guidance
 
-Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`.
+Task 2 added a SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`.
 
-Task 3 added a dormant LLM Text-to-SQL planner that can ask the configured assistant LLM client for a candidate SQL plan and parse it fail-closed.
+Task 3 added an LLM Text-to-SQL planner that can ask the configured assistant LLM client for a candidate SQL plan and parse it fail-closed.
 
 Task 4 wires the planner, validator, executor, and response mapper into `AssistantOrchestrator` behind `Assistant:TextToSql:Enabled`. When the flag is disabled, existing `POST /api/assistant/query` behavior is unchanged. When enabled, Text-to-SQL is attempted first and the existing assistant flow remains the safe fallback.
+
+Task 5A cleaned stale status language only. It did not remove deterministic fallback, the existing CQRS assistant flow, existing response DTOs, existing tool names, or feature-flag behavior.
 
 ## Migration Strategy
 
@@ -166,7 +168,7 @@ Task 2 adds only the backend SQL safety layer:
 - The LLM Text-to-SQL planner remains untrusted input to the validator.
 - Assistant orchestration calls Text-to-SQL only when `Assistant:TextToSql:Enabled` is true.
 
-## Task 3 Dormant LLM Planner
+## Task 3 LLM Planner
 
 Task 3 adds only the backend planning layer:
 
@@ -176,7 +178,7 @@ Task 3 adds only the backend planning layer:
 - The planner reuses the existing configured `IAssistantLlmClient` abstraction and does not add a provider SDK.
 - No catalog rows, order rows, JWTs, connection strings, read-only passwords, or secrets are sent to the LLM by this planner.
 - Prompt text and raw provider responses are not logged.
-- Candidate SQL remains untrusted and must pass the Task 2 validator before any future execution.
+- Candidate SQL remains untrusted and must pass the Task 2 validator before execution.
 - The planner is registered in DI and is called by `AssistantOrchestrator` only when the Text-to-SQL feature flag is enabled.
 - Existing assistant behavior remains unchanged while the flag is disabled.
 
@@ -192,6 +194,7 @@ Task 4 adds the runtime orchestration path:
 - Known result shapes map to existing frontend-compatible response types: recent orders, order summary analytics, catalog product list, catalog product details, and ordered product details.
 - Generated SQL, raw provider responses, raw database errors, prompts, connection strings, JWTs, and auth headers are not returned to the frontend.
 - Admin/write requests remain unsupported.
+- `genericTable` remains non-public/unexposed and falls back to the existing assistant flow.
 
 User secrets example:
 

@@ -136,10 +136,11 @@ Platform assistant orchestration is API-only:
 - No provider SDK package, committed API key, committed secret, live test call, runtime database access, or MCP dependency has been added for LLM provider execution.
 - API keys must come only from environment variables or user secrets/non-committed configuration providers. Do not put API keys in `appsettings*.json`.
 - Assistant Text-to-SQL Task 1 added the future database boundary: the `assistant` schema and approved read-only views in the separate Catalog and Orders databases, plus setup documentation in `docs/project/ASSISTANT_TEXT_TO_SQL_READONLY_DB.md`.
-- Assistant Text-to-SQL Task 2 added a dormant SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
-- Assistant Text-to-SQL Task 3 added a dormant LLM planner under `src/Api/Ecommerce.Api/Assistant/TextToSql`. It builds the approved-view prompt, parses the model JSON plan fail-closed, and reuses the existing assistant LLM client abstraction.
+- Assistant Text-to-SQL Task 2 added the SQL validator and read-only executor behind `Assistant:TextToSql:Enabled`, which defaults to `false`.
+- Assistant Text-to-SQL Task 3 added the LLM planner under `src/Api/Ecommerce.Api/Assistant/TextToSql`. It builds the approved-view prompt, parses the model JSON plan fail-closed, and reuses the existing assistant LLM client abstraction.
 - Assistant Text-to-SQL Task 4 wired `AssistantOrchestrator` to try Text-to-SQL as a first-pass path only when `Assistant:TextToSql:Enabled` is true. When the flag is false, the existing assistant flow remains unchanged.
 - Existing deterministic/intent assistant behavior remains the fallback when planning, validation, execution, or response mapping fails safely.
+- Task 5A only cleaned stale documentation/status/test naming; it did not remove deterministic fallback, the existing CQRS assistant flow, response DTOs, tool names, or feature-flag behavior.
 - Text-to-SQL candidate SQL is still untrusted and must pass the Task 2 validator before execution.
 - Text-to-SQL runtime must use separate local-only read-only connection strings: `ConnectionStrings:AssistantCatalogReadOnly` and `ConnectionStrings:AssistantOrdersReadOnly`. Do not commit real values or passwords.
 - Do not use normal application DB connection strings for Text-to-SQL execution.
