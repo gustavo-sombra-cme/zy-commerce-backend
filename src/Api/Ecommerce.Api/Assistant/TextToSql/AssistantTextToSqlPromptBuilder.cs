@@ -46,6 +46,15 @@ public sealed class AssistantTextToSqlPromptBuilder
         User: what is my last order
         JSON: {"supported":true,"dataSource":"orders","sql":"SELECT TOP (1) OrderId, Status, TotalAmount, CreatedAt, LineCount FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId ORDER BY CreatedAt DESC","resultShape":"orderList","reason":null}
 
+        User: first order where I ordered Galaxy
+        JSON: {"supported":true,"dataSource":"orders","sql":"SELECT TOP (1) o.OrderId, o.Status, o.TotalAmount, o.CreatedAt, o.LineCount, l.ProductId, l.ProductName, l.ProductSku, l.Quantity, l.UnitPriceAmount, l.LineTotal FROM assistant.v_MyOrders AS o INNER JOIN assistant.v_MyOrderLines AS l ON l.OrderId = o.OrderId WHERE o.BuyerUserId = @CurrentUserId AND l.BuyerUserId = @CurrentUserId AND (l.ProductName LIKE '%Galaxy%' OR l.ProductSku LIKE '%Galaxy%') ORDER BY o.CreatedAt ASC","resultShape":"orderList","reason":null}
+
+        User: earliest order containing product X
+        JSON: {"supported":true,"dataSource":"orders","sql":"SELECT TOP (1) o.OrderId, o.Status, o.TotalAmount, o.CreatedAt, o.LineCount, l.ProductId, l.ProductName, l.ProductSku, l.Quantity, l.UnitPriceAmount, l.LineTotal FROM assistant.v_MyOrders AS o INNER JOIN assistant.v_MyOrderLines AS l ON l.OrderId = o.OrderId WHERE o.BuyerUserId = @CurrentUserId AND l.BuyerUserId = @CurrentUserId AND (l.ProductName LIKE '%X%' OR l.ProductSku LIKE '%X%') ORDER BY o.CreatedAt ASC","resultShape":"orderList","reason":null}
+
+        User: show my orders where I bought Galaxy
+        JSON: {"supported":true,"dataSource":"orders","sql":"SELECT TOP (10) o.OrderId, o.Status, o.TotalAmount, o.CreatedAt, o.LineCount, l.ProductId, l.ProductName, l.ProductSku, l.Quantity, l.UnitPriceAmount, l.LineTotal FROM assistant.v_MyOrders AS o INNER JOIN assistant.v_MyOrderLines AS l ON l.OrderId = o.OrderId WHERE o.BuyerUserId = @CurrentUserId AND l.BuyerUserId = @CurrentUserId AND (l.ProductName LIKE '%Galaxy%' OR l.ProductSku LIKE '%Galaxy%') ORDER BY o.CreatedAt DESC","resultShape":"orderList","reason":null}
+
         User: what did I order last
         JSON: {"supported":true,"dataSource":"orders","sql":"SELECT TOP (10) ProductName, ProductSku, Quantity, UnitPriceAmount, LineTotal FROM assistant.v_MyOrderLines WHERE BuyerUserId = @CurrentUserId ORDER BY OrderId DESC","resultShape":"orderDetails","reason":null}
 

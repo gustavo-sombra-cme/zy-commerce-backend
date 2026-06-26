@@ -428,6 +428,7 @@ public sealed class AssistantIntegrationTests
     [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (5) ProductId, Sku FROM assistant.v_ProductDetails WHERE IsActive = 1")]
     [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (10) OrderId, Status FROM assistant.v_MyOrders WHERE BuyerUserId = @CurrentUserId")]
     [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (10) ProductName FROM assistant.v_MyOrderLines WHERE BuyerUserId = @CurrentUserId")]
+    [InlineData(AssistantSqlDataSource.Orders, "SELECT TOP (1) o.OrderId, o.Status, o.TotalAmount, o.CreatedAt, o.LineCount, l.ProductId, l.ProductName, l.ProductSku, l.Quantity, l.UnitPriceAmount, l.LineTotal FROM assistant.v_MyOrders AS o INNER JOIN assistant.v_MyOrderLines AS l ON l.OrderId = o.OrderId WHERE o.BuyerUserId = @CurrentUserId AND l.BuyerUserId = @CurrentUserId AND (l.ProductName LIKE '%Galaxy%' OR l.ProductSku LIKE '%Galaxy%') ORDER BY o.CreatedAt ASC")]
     public void SqlValidator_ShouldAcceptApprovedAssistantViewQueries(
         AssistantSqlDataSource dataSource,
         string sql)
@@ -582,6 +583,12 @@ public sealed class AssistantIntegrationTests
         Assert.Contains("assistant.v_MyOrderSummary", prompt, StringComparison.Ordinal);
         Assert.Contains("BuyerUserId = @CurrentUserId", prompt, StringComparison.Ordinal);
         Assert.Contains("deactivate product", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("first order where I ordered Galaxy", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("earliest order containing product X", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("show my orders where I bought Galaxy", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("l.ProductName LIKE '%Galaxy%'", prompt, StringComparison.Ordinal);
+        Assert.Contains("l.ProductSku LIKE '%Galaxy%'", prompt, StringComparison.Ordinal);
+        Assert.Contains("\"resultShape\":\"orderList\"", prompt, StringComparison.Ordinal);
         Assert.Contains("\"supported\":false", prompt, StringComparison.Ordinal);
         Assert.Contains("ProductId, Name, Sku, Description, PriceAmount, IsActive, CreatedAt, UpdatedAt", prompt, StringComparison.Ordinal);
         Assert.DoesNotContain("CurrencyCode", prompt, StringComparison.Ordinal);
@@ -762,6 +769,110 @@ public sealed class AssistantIntegrationTests
     }
 
     [Fact]
+    public async Task TextToSqlEnabled_OrderProductMatch_ShouldMapRecentOrdersWithMatchingLines()
+    {
+        var buyerId = Guid.NewGuid();
+        var sender = new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called."));
+        var plan = OrderProductMatchPlan();
+        var planner = new RecordingTextToSqlPlanner(plan);
+        var executor = new RecordingTextToSqlExecutor(OrderProductMatchResult());
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: planner,
+            textToSqlExecutor: executor,
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync(
+            "I need my first order where I order a Galaxy product",
+            buyerId,
+            CancellationToken.None);
+        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var query = Assert.Single(executor.Queries);
+        Assert.Equal(AssistantSqlDataSource.Orders, query.DataSource);
+        Assert.Equal(buyerId, query.CurrentUserId);
+        Assert.Empty(sender.Requests);
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
+        Assert.Contains(AssistantToolNames.OrdersSearch, response.ToolsUsed);
+        Assert.DoesNotContain(plan.Sql!, json, StringComparison.Ordinal);
+        Assert.DoesNotContain("SELECT", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("assistant.v_MyOrders", json, StringComparison.OrdinalIgnoreCase);
+
+        var data = Assert.IsType<AssistantOrdersData>(response.Data);
+        var order = Assert.Single(data.Orders);
+        Assert.Equal("Created", order.Status);
+        Assert.Equal(2, order.LineCount);
+        var line = Assert.Single(order.Lines);
+        Assert.Equal("Galaxy Buds", line.ProductName);
+        Assert.Equal("GALAXY-BUDS", line.ProductSku);
+        Assert.Equal(1, line.Quantity);
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_OrderProductMatch_ShouldGroupMatchingLinesByOrder()
+    {
+        var orchestrator = CreateOrchestrator(
+            new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called.")),
+            textToSqlPlanner: new RecordingTextToSqlPlanner(OrderProductMatchPlan()),
+            textToSqlExecutor: new RecordingTextToSqlExecutor(OrderProductMatchResult(matchingLineRows: 2)),
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync(
+            "show my orders where I bought Galaxy",
+            Guid.NewGuid(),
+            CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
+
+        var data = Assert.IsType<AssistantOrdersData>(response.Data);
+        var order = Assert.Single(data.Orders);
+        Assert.Equal(2, order.Lines.Count);
+        Assert.Contains(order.Lines, line => line.ProductSku == "GALAXY-BUDS");
+        Assert.Contains(order.Lines, line => line.ProductSku == "GALAXY-CASE");
+    }
+
+    [Fact]
+    public async Task TextToSqlEnabled_EmptyOrderProductMatch_ShouldReturnSupportedEmptyState()
+    {
+        var orchestrator = CreateOrchestrator(
+            new RecordingSender(_ => throw new InvalidOperationException("Existing assistant path should not be called.")),
+            textToSqlPlanner: new RecordingTextToSqlPlanner(OrderProductMatchPlan()),
+            textToSqlExecutor: new RecordingTextToSqlExecutor(new AssistantSqlResult(
+                true,
+                [
+                    "OrderId",
+                    "Status",
+                    "TotalAmount",
+                    "CreatedAt",
+                    "LineCount",
+                    "ProductId",
+                    "ProductName",
+                    "ProductSku",
+                    "Quantity",
+                    "UnitPriceAmount",
+                    "LineTotal"
+                ],
+                Array.Empty<AssistantSqlRow>(),
+                0,
+                false)),
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync(
+            "I need my first order where I order a Galaxy product",
+            Guid.NewGuid(),
+            CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
+        Assert.Contains("did not find matching orders", response.Answer, StringComparison.OrdinalIgnoreCase);
+
+        var data = Assert.IsType<AssistantOrdersData>(response.Data);
+        Assert.Empty(data.Orders);
+    }
+
+    [Fact]
     public async Task TextToSqlEnabled_TotalSpend_ShouldMapSpendSummary()
     {
         var planner = new RecordingTextToSqlPlanner(new AssistantTextToSqlPlan(
@@ -938,6 +1049,9 @@ public sealed class AssistantIntegrationTests
         Assert.False(response.Unsupported);
         Assert.Equal(AssistantResponseTypes.RecentOrders, response.ResponseType);
         Assert.Contains("do not have any recent orders", response.Answer, StringComparison.OrdinalIgnoreCase);
+
+        var data = Assert.IsType<AssistantOrdersData>(response.Data);
+        Assert.Empty(data.Orders);
     }
 
     [Fact]
@@ -1710,6 +1824,14 @@ public sealed class AssistantIntegrationTests
             AssistantTextToSqlResultShape.OrderList,
             null);
 
+    private static AssistantTextToSqlPlan OrderProductMatchPlan() =>
+        new(
+            true,
+            AssistantSqlDataSource.Orders,
+            "SELECT TOP (1) o.OrderId, o.Status, o.TotalAmount, o.CreatedAt, o.LineCount, l.ProductId, l.ProductName, l.ProductSku, l.Quantity, l.UnitPriceAmount, l.LineTotal FROM assistant.v_MyOrders AS o INNER JOIN assistant.v_MyOrderLines AS l ON l.OrderId = o.OrderId WHERE o.BuyerUserId = @CurrentUserId AND l.BuyerUserId = @CurrentUserId AND (l.ProductName LIKE '%Galaxy%' OR l.ProductSku LIKE '%Galaxy%') ORDER BY o.CreatedAt ASC",
+            AssistantTextToSqlResultShape.OrderList,
+            null);
+
     private static AssistantSqlResult OrderListResult()
     {
         var orderId = Guid.NewGuid();
@@ -1726,6 +1848,68 @@ public sealed class AssistantIntegrationTests
                 ["LineCount"] = 2
             })],
             1,
+            false);
+    }
+
+    private static AssistantSqlResult OrderProductMatchResult(int matchingLineRows = 1)
+    {
+        var orderId = Guid.NewGuid();
+        var firstProductId = Guid.NewGuid();
+        var secondProductId = Guid.NewGuid();
+        var createdAt = DateTimeOffset.UtcNow.AddDays(-10);
+        var rows = new List<AssistantSqlRow>
+        {
+            new(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["OrderId"] = orderId,
+                ["Status"] = "Created",
+                ["TotalAmount"] = 119.98m,
+                ["CreatedAt"] = createdAt,
+                ["LineCount"] = 2,
+                ["ProductId"] = firstProductId,
+                ["ProductName"] = "Galaxy Buds",
+                ["ProductSku"] = "GALAXY-BUDS",
+                ["Quantity"] = 1,
+                ["UnitPriceAmount"] = 99.99m,
+                ["LineTotal"] = 99.99m
+            })
+        };
+
+        if (matchingLineRows > 1)
+        {
+            rows.Add(new AssistantSqlRow(new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["OrderId"] = orderId,
+                ["Status"] = "Created",
+                ["TotalAmount"] = 119.98m,
+                ["CreatedAt"] = createdAt,
+                ["LineCount"] = 2,
+                ["ProductId"] = secondProductId,
+                ["ProductName"] = "Galaxy Case",
+                ["ProductSku"] = "GALAXY-CASE",
+                ["Quantity"] = 1,
+                ["UnitPriceAmount"] = 19.99m,
+                ["LineTotal"] = 19.99m
+            }));
+        }
+
+        return new AssistantSqlResult(
+            true,
+            [
+                "OrderId",
+                "Status",
+                "TotalAmount",
+                "CreatedAt",
+                "LineCount",
+                "ProductId",
+                "ProductName",
+                "ProductSku",
+                "Quantity",
+                "UnitPriceAmount",
+                "LineTotal"
+            ],
+            rows,
+            rows.Count,
             false);
     }
 
