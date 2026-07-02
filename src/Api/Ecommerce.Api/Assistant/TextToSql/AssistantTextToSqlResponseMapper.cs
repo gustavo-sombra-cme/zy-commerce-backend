@@ -26,16 +26,41 @@ public sealed class AssistantTextToSqlResponseMapper
 
     private static AssistantQueryResponse MapOrderList(AssistantSqlResult result)
     {
-        var orders = result.Rows
-            .Select(TryMapOrderCard)
-            .Where(order => order is not null)
-            .Select(order => order!)
+        var orderBuilders = new Dictionary<Guid, OrderCardBuilder>();
+
+        foreach (var row in result.Rows)
+        {
+            var order = TryMapOrderCard(row);
+            if (order is null)
+            {
+                continue;
+            }
+
+            if (!orderBuilders.TryGetValue(order.OrderId, out var builder))
+            {
+                builder = new OrderCardBuilder(order);
+                orderBuilders.Add(order.OrderId, builder);
+            }
+
+            var line = TryMapOrderLine(row);
+            if (line is not null)
+            {
+                builder.AddLine(line);
+            }
+        }
+
+        var orders = orderBuilders.Values
+            .Select(builder => builder.Build())
             .ToArray();
 
         if (orders.Length == 0)
         {
+            var answer = HasOrderLineColumns(result)
+                ? "I did not find matching orders in your returned order history."
+                : "You do not have any recent orders.";
+
             return new AssistantQueryResponse(
-                "You do not have any recent orders.",
+                answer,
                 [AssistantToolNames.OrdersSearch],
                 "authenticated-user",
                 false,
@@ -228,6 +253,18 @@ public sealed class AssistantTextToSqlResponseMapper
             lineTotal);
     }
 
+    private static bool HasOrderLineColumns(AssistantSqlResult result)
+    {
+        var columns = result.Columns.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return columns.Contains("ProductName")
+            || columns.Contains("ProductSku")
+            || columns.Contains("ProductId")
+            || columns.Contains("Quantity")
+            || columns.Contains("UnitPriceAmount")
+            || columns.Contains("LineTotal");
+    }
+
     private static bool TryGetString(AssistantSqlRow row, string column, out string value)
     {
         if (row.Values.TryGetValue(column, out var raw) && raw is not null)
@@ -348,4 +385,29 @@ public sealed class AssistantTextToSqlResponseMapper
 
     private static string Money(decimal amount) =>
         amount.ToString("0.00", CultureInfo.InvariantCulture);
+
+    private sealed class OrderCardBuilder(AssistantOrderCardDto order)
+    {
+        private readonly List<AssistantOrderLineDto> _lines = [];
+
+        public Guid OrderId => order.OrderId;
+
+        public void AddLine(AssistantOrderLineDto line)
+        {
+            if (_lines.Any(existing => existing.ProductId == line.ProductId
+                    && string.Equals(existing.ProductSku, line.ProductSku, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(existing.ProductName, line.ProductName, StringComparison.OrdinalIgnoreCase)
+                    && existing.UnitPrice == line.UnitPrice
+                    && existing.Quantity == line.Quantity
+                    && existing.LineTotal == line.LineTotal))
+            {
+                return;
+            }
+
+            _lines.Add(line);
+        }
+
+        public AssistantOrderCardDto Build() =>
+            order with { Lines = _lines.ToArray() };
+    }
 }
