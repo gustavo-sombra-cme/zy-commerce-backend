@@ -398,11 +398,13 @@ Agent rule files:
 - `AGENT.md` is the short router.
 - `instructions/00-role-and-stack.md` contains role, stack, strategy, repository, and active module rules.
 - `instructions/01-execution-and-planning.md` contains state, execution lock, planning rules, and short-prompt expansion rules.
+- `instructions/01-execution-and-planning.md` also contains backend branch workflow rules requiring one task, one branch, one PR; latest `main` start; dirty-worktree safety; and manual commit/push/PR gates.
 - `instructions/02-architecture-and-modules.md` contains Clean Architecture and module rules.
 - `instructions/03-cqrs-database-testing-security.md` contains CQRS, DDD ownership, database, testing, architecture test, and security rules.
 - `instructions/04-documentation-and-memory.md` contains prompt logging, reusable template location, project memory, feature demo slide deliverables, AGENT replacement, ADR, and learning journal rules.
 - `instructions/05-completion.md` contains self-review, execution summary, and completion rules.
 - `docs/project/PROMPT_TEMPLATE.md` defines default PLAN MODE and APPROVED EXECUTE expectations, including a strict Plan Output Contract, Plan Self-Validation Rule, and feature demo slide deliverable rule so future prompts can be shorter without weakening execution lock, prompt logging, architecture, DDD, CQRS, module isolation, testing, or documentation rules.
+- Approved backend execution tasks must create a dedicated `feature/`, `fix/`, `docs/`, or `chore/` branch from latest `main` before implementation and must not commit, push, or create a PR without explicit backend approval.
 
 ## Test Status
 
@@ -691,6 +693,14 @@ Latest code execution after Conservative Assistant Text-to-SQL Status Cleanup:
 - Clarified that Task 5A did not remove deterministic fallback, the existing CQRS assistant flow, response DTOs, tool names, or feature-flag behavior.
 - Renamed stale Text-to-SQL registration test wording from dormant to feature-flagged.
 - No runtime behavior, frontend, MCP, database schema, migration, response contract, tool name, or secret changes were added.
+
+Latest documentation-only execution after Backend Branch Workflow Rules:
+
+- Added backend branch workflow rules to the execution/planning instructions.
+- Backend execution now requires one task, one branch, one PR; latest `main` start; dirty-worktree safety; and manual commit, push, and PR gates.
+- Updated reusable prompt defaults and project memory to preserve the rule for future sessions.
+- No application code, project references, packages, APIs, database schema, or migrations changed.
+- Restore, build, and test were intentionally not run.
 
 ## Intentionally Absent
 

@@ -71,3 +71,66 @@ APPROVED: EXECUTE
 The execution lock remains mandatory for all file creation, file modification, code generation, command execution, scaffolding, migrations, and project changes.
 
 Short prompts do not override architecture, DDD, CQRS, module isolation, documentation, prompt logging, testing, security, or completion rules.
+
+---
+
+# BRANCH WORKFLOW RULES
+
+* One task = one branch = one PR.
+* Every approved execution task must start from latest `main` unless the user explicitly says otherwise.
+* Create a new dedicated branch before changing files.
+* Do not continue new feature work on an old feature branch.
+* Do not work directly on `main`.
+* Do not push directly to `main`.
+* Use branch names in one of these forms:
+  * `feature/<feature-name>`
+  * `fix/<bug-name>`
+  * `docs/<documentation-change>`
+  * `chore/<maintenance-task>`
+
+## START-OF-EXECUTION FLOW
+
+For every `APPROVED: EXECUTE` task:
+
+1. Confirm the current repository path.
+2. Confirm the current branch.
+3. Run `git status --short --branch`.
+4. If the worktree has uncommitted changes, stop and report unless the user explicitly approves a separate worktree or explicitly approves including those changes.
+5. Fetch latest `main`.
+6. Check out `main`.
+7. Pull latest `main`.
+8. Create a new dedicated branch for the approved task.
+9. Confirm the branch name before making changes.
+10. Implement only after the new branch exists.
+
+## DIRTY WORKTREE SAFETY
+
+* Do not switch branches, reset, stash, or overwrite files in a dirty worktree without explicit approval.
+* If a new task must start while the primary worktree is dirty, propose a separate clean Git worktree.
+* Do not include unrelated dirty files in a task branch.
+
+## MANUAL COMMIT AND PUSH GATE
+
+* Do not commit automatically unless explicitly approved.
+* Do not push automatically unless explicitly approved.
+* Do not create a pull request automatically unless explicitly approved.
+* After implementation and verification, stop for local review and wait for one of:
+  * `APPROVED: COMMIT BACKEND CHANGES`
+  * `APPROVED: PUSH BACKEND BRANCH`
+  * `APPROVED: CREATE BACKEND PR`
+  * `APPROVED: COMMIT AND PUSH BACKEND CHANGES`
+
+## PRE-COMMIT CHECKS
+
+Before any approved commit, run or confirm:
+
+* `git status --short --branch`
+* `git diff --name-only`
+* Changed files were reviewed.
+* No unrelated files are included.
+* No secrets are included.
+* No generated artifacts are included.
+* No `bin`, `obj`, `TestResults`, or `coverage` files are included.
+* Required build/test verification passed when application files changed.
+
+Stop and report if build fails, tests fail, secrets are detected, unexpected files changed, the current branch is `main` during implementation, `main` is not up to date, the remote is unclear, or the worktree is dirty without approval for the task.

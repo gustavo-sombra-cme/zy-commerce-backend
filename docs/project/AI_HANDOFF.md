@@ -47,6 +47,8 @@ Current source boundaries:
 
 Do not create code without explicit `APPROVED: EXECUTE`.
 
+Every approved execution task must follow the Branch Workflow Rules in `instructions/01-execution-and-planning.md`: start from latest `main`, confirm path/branch/status, stop on a dirty worktree unless explicitly approved, create a dedicated `feature/`, `fix/`, `docs/`, or `chore/` branch before implementation, and do not work directly on `main`.
+
 Do not create these unless explicitly approved:
 
 - Bootstrapper project
@@ -59,6 +61,8 @@ Do not create these unless explicitly approved:
 - Customers module
 
 Prompt logging is required before execution unless the user writes `SKIP PROMPT LOG`.
+
+Commit, push, and pull request creation are manual gates. Do not commit, push, or create a PR unless the user explicitly approves one of `APPROVED: COMMIT BACKEND CHANGES`, `APPROVED: PUSH BACKEND BRANCH`, `APPROVED: CREATE BACKEND PR`, or `APPROVED: COMMIT AND PUSH BACKEND CHANGES`.
 
 When AGENT.md changes, replace the full file. Do not provide or apply partial AGENT.md edits.
 
@@ -243,3 +247,4 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - Prompt standardization and reusable prompt template setup
 - Prompt template compliance contract enhancement
 - Feature demo slide deliverable workflow
+- Backend branch workflow rules

@@ -261,6 +261,7 @@ PLAN_STATUS: PENDING_APPROVAL
 When the prompt starts with `APPROVED: EXECUTE` or `Execute approved ...`:
 
 * Execution is allowed only for the approved scope.
+* Follow the Branch Workflow Rules in `instructions/01-execution-and-planning.md` before changing files.
 * Create or update the planning prompt log and create the execution prompt log before implementation, unless `SKIP PROMPT LOG` is present.
 * Follow the approved plan exactly.
 * Do not add unapproved modules, projects, migrations, schema changes, APIs, packages, auth behavior, or cross-module references.
@@ -282,6 +283,17 @@ For documentation-only tasks:
 
 * Perform documentation self-review.
 * Do not run build or test commands unless code or project structure changes are required.
+
+## Branch Workflow Summary
+
+Every approved execution task must use one task, one branch, and one PR. Start from latest `main`, confirm repository path, branch, and `git status --short --branch`, stop on a dirty worktree unless the user approves including the changes or using a separate worktree, then create a dedicated `feature/`, `fix/`, `docs/`, or `chore/` branch before implementation.
+
+Do not work directly on `main`, push directly to `main`, commit automatically, push automatically, or create a pull request automatically. After implementation and verification, wait for one of:
+
+* `APPROVED: COMMIT BACKEND CHANGES`
+* `APPROVED: PUSH BACKEND BRANCH`
+* `APPROVED: CREATE BACKEND PR`
+* `APPROVED: COMMIT AND PUSH BACKEND CHANGES`
 
 Add manual verification when API, auth, database, Swagger, or behavior-visible changes are involved.
 

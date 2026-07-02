@@ -46,6 +46,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Prompt standardization and reusable prompt template setup (`docs/project/PROMPT_TEMPLATE.md`)
 - Prompt template compliance contract enhancement for complete short-prompt plans
 - Feature demo slide deliverable workflow (`docs/demo/features/{feature-slug}-demo-slides.md`)
+- Backend branch workflow rules (`one task = one branch = one PR`)
 
 ---
 
@@ -342,6 +343,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 41. Assistant Text-to-SQL LLM planner
 42. Assistant Text-to-SQL orchestration behind feature flag
 43. Conservative Assistant Text-to-SQL status cleanup
+44. Backend branch workflow rules
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -366,7 +368,9 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was Conservative Assistant Text-to-SQL status cleanup. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Backend Branch Workflow Rules. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+
+The backend branch workflow now requires starting approved execution tasks from latest `main` on a new dedicated branch, with dirty-worktree safety and manual commit/push/PR gates.
 
 **How to Proceed:**
 
@@ -422,6 +426,14 @@ Use this prompt to orient yourself when starting a new session:
 Approval phrase: `APPROVED: EXECUTE <task description>`
 
 Without this phrase, all execution is forbidden. This gate prevents accidental code generation.
+
+### Critical: Branch Workflow
+
+Every approved execution task must start from latest `main`, create a dedicated `feature/`, `fix/`, `docs/`, or `chore/` branch, and use one task, one branch, and one PR.
+
+Before implementation, confirm repository path, current branch, and `git status --short --branch`. If the worktree is dirty, stop unless the user explicitly approves including those changes or using a separate clean worktree.
+
+Do not work directly on `main`, push directly to `main`, commit automatically, push automatically, or create a pull request automatically. Wait for explicit backend commit, push, or PR approval.
 
 ### Critical: Prompt Logging
 
