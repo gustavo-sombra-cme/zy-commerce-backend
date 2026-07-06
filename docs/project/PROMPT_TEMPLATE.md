@@ -262,6 +262,7 @@ When the prompt starts with `APPROVED: EXECUTE` or `Execute approved ...`:
 
 * Execution is allowed only for the approved scope.
 * Follow the Branch Workflow Rules in `instructions/01-execution-and-planning.md` before changing files.
+* Use applicable repo-local workflow skills in `docs/skills/workflow/` for repeated workflow checks.
 * Create or update the planning prompt log and create the execution prompt log before implementation, unless `SKIP PROMPT LOG` is present.
 * Follow the approved plan exactly.
 * Do not add unapproved modules, projects, migrations, schema changes, APIs, packages, auth behavior, or cross-module references.
@@ -291,9 +292,12 @@ Every approved execution task must use one task, one branch, and one PR. Start f
 Do not work directly on `main`, push directly to `main`, commit automatically, push automatically, or create a pull request automatically. After implementation and verification, wait for one of:
 
 * `APPROVED: COMMIT BACKEND CHANGES`
+* `APPROVED: PUSH`
 * `APPROVED: PUSH BACKEND BRANCH`
 * `APPROVED: CREATE BACKEND PR`
 * `APPROVED: COMMIT AND PUSH BACKEND CHANGES`
+
+Readiness skills can recommend commit or push readiness, but they are never approval by themselves.
 
 Add manual verification when API, auth, database, Swagger, or behavior-visible changes are involved.
 
@@ -465,6 +469,20 @@ docs/decisions/
 Prompt logs are historical records and should not be rewritten after completion.
 
 Reusable templates belong in project documentation, not prompt history.
+
+Repo-local workflow skill docs live in:
+
+```text
+docs/skills/workflow/
+```
+
+Workflow sub-agent guidance lives in:
+
+```text
+docs/agents/workflow/
+```
+
+Use these docs for reusable workflow checks instead of duplicating large checklist sections in prompts or instruction files.
 
 ---
 

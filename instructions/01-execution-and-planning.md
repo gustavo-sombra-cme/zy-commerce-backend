@@ -64,6 +64,8 @@ Short planning prompts such as "Plan next Catalog feature: Update Product Detail
 
 Short planning prompts must return every required section from `docs/project/PROMPT_TEMPLATE.md#required-plan-output` using the exact section names and must perform the template's Plan Self-Validation Rule before responding.
 
+Short prompts must use applicable repo-local workflow skill docs under `docs/skills/workflow/` for repeated workflow checks instead of duplicating their full checklist text in every response.
+
 Short execution prompts such as "Execute approved feature: Update Product Details" are not valid execution approval unless they include the explicit approval phrase:
 
 APPROVED: EXECUTE
@@ -116,6 +118,7 @@ For every `APPROVED: EXECUTE` task:
 * Do not create a pull request automatically unless explicitly approved.
 * After implementation and verification, stop for local review and wait for one of:
   * `APPROVED: COMMIT BACKEND CHANGES`
+  * `APPROVED: PUSH`
   * `APPROVED: PUSH BACKEND BRANCH`
   * `APPROVED: CREATE BACKEND PR`
   * `APPROVED: COMMIT AND PUSH BACKEND CHANGES`
@@ -127,10 +130,13 @@ Before any approved commit, run or confirm:
 * `git status --short --branch`
 * `git diff --name-only`
 * Changed files were reviewed.
+* Applicable repo-local workflow skills under `docs/skills/workflow/` were applied.
 * No unrelated files are included.
 * No secrets are included.
 * No generated artifacts are included.
 * No `bin`, `obj`, `TestResults`, or `coverage` files are included.
 * Required build/test verification passed when application files changed.
+
+`APPROVED: PUSH` and `APPROVED: PUSH BACKEND BRANCH` are both valid explicit backend push approval phrases. A readiness skill can recommend a push, but it is never approval by itself.
 
 Stop and report if build fails, tests fail, secrets are detected, unexpected files changed, the current branch is `main` during implementation, `main` is not up to date, the remote is unclear, or the worktree is dirty without approval for the task.

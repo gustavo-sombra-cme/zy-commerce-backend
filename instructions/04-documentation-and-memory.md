@@ -50,6 +50,34 @@ Do not place reusable templates inside `docs/prompts/`; that directory is for ch
 
 ---
 
+# REPO-LOCAL WORKFLOW SKILLS RULE
+
+Workflow skills are repo-local Markdown guidance only.
+
+Location:
+
+docs/skills/workflow/
+
+Workflow sub-agent guidance is repo-local Markdown guidance only.
+
+Location:
+
+docs/agents/workflow/
+
+These documents define reusable checks and responsibilities for Codex/harness workflow. They are not runtime application code, they are not approval by themselves, and they must not make commit, push, PR, deployment, migration execution, destructive actions, or admin/write AI behavior automatic.
+
+Backend and frontend repositories must keep repo-specific workflow skill sets. Do not create a shared/common workflow skill set for this backend repository.
+
+The project-wide skill and sub-agent architecture source of truth lives in:
+
+docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md
+
+Code review guidance lives in:
+
+docs/project/CODE_REVIEW.md
+
+---
+
 # AI PROJECT MEMORY RULE
 
 The repository is the persistent source of truth for future AI sessions.

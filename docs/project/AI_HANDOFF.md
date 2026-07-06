@@ -62,7 +62,7 @@ Do not create these unless explicitly approved:
 
 Prompt logging is required before execution unless the user writes `SKIP PROMPT LOG`.
 
-Commit, push, and pull request creation are manual gates. Do not commit, push, or create a PR unless the user explicitly approves one of `APPROVED: COMMIT BACKEND CHANGES`, `APPROVED: PUSH BACKEND BRANCH`, `APPROVED: CREATE BACKEND PR`, or `APPROVED: COMMIT AND PUSH BACKEND CHANGES`.
+Commit, push, and pull request creation are manual gates. Do not commit, push, or create a PR unless the user explicitly approves one of `APPROVED: COMMIT BACKEND CHANGES`, `APPROVED: PUSH`, `APPROVED: PUSH BACKEND BRANCH`, `APPROVED: CREATE BACKEND PR`, or `APPROVED: COMMIT AND PUSH BACKEND CHANGES`.
 
 When AGENT.md changes, replace the full file. Do not provide or apply partial AGENT.md edits.
 
@@ -71,6 +71,12 @@ AGENT.md is now a router. Detailed V2 rules live in `instructions/*.md`; read th
 Reusable prompt defaults live in `docs/project/PROMPT_TEMPLATE.md`. Use it to expand short prompts such as `Plan next Catalog feature: Update Product Details` or `Execute approved feature: Update Product Details`.
 
 Short planning prompts must follow the template's Plan Output Contract exactly and run the Plan Self-Validation Rule before returning a plan.
+
+Repo-local workflow skills are Markdown guidance only under `docs/skills/workflow/`; workflow sub-agent guidance lives under `docs/agents/workflow/`. They are backend-specific, not shared with the frontend repository, and do not replace explicit user approval.
+
+Project-wide AI skills and sub-agent decisions live in `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`. Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers.
+
+Before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes, use `docs/project/CODE_REVIEW.md`. Documentation-only maintenance is excluded from mandatory code review but still requires documentation self-review.
 
 Feature demo slide deliverables are part of the default execution workflow. For main features, major platform capabilities, API modules, integrations, or demo-worthy backend behavior, create or update `docs/demo/features/{feature-slug}-demo-slides.md` with slide-ready Markdown, Mermaid diagrams where useful, demo script, test evidence, risks/tradeoffs, Q&A talking points, and `Speaker cue:` lines. Tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, and documentation-only maintenance do not require slide files unless explicitly requested.
 
@@ -248,3 +254,4 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - Prompt template compliance contract enhancement
 - Feature demo slide deliverable workflow
 - Backend branch workflow rules
+- AI skills and sub-agent architecture documentation

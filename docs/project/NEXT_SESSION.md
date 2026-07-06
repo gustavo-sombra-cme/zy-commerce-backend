@@ -47,6 +47,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Prompt template compliance contract enhancement for complete short-prompt plans
 - Feature demo slide deliverable workflow (`docs/demo/features/{feature-slug}-demo-slides.md`)
 - Backend branch workflow rules (`one task = one branch = one PR`)
+- AI skills and sub-agent architecture documentation (`docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`, `docs/skills/workflow/`, `docs/agents/workflow/`)
 
 ---
 
@@ -344,6 +345,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 42. Assistant Text-to-SQL orchestration behind feature flag
 43. Conservative Assistant Text-to-SQL status cleanup
 44. Backend branch workflow rules
+45. AI skills and sub-agent architecture documentation
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -368,7 +370,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was Backend Branch Workflow Rules. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was AI Skills And Sub-Agent Architecture Documentation. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 The backend branch workflow now requires starting approved execution tasks from latest `main` on a new dedicated branch, with dirty-worktree safety and manual commit/push/PR gates.
 
@@ -434,6 +436,16 @@ Every approved execution task must start from latest `main`, create a dedicated 
 Before implementation, confirm repository path, current branch, and `git status --short --branch`. If the worktree is dirty, stop unless the user explicitly approves including those changes or using a separate clean worktree.
 
 Do not work directly on `main`, push directly to `main`, commit automatically, push automatically, or create a pull request automatically. Wait for explicit backend commit, push, or PR approval.
+
+Accepted backend push approval phrases are `APPROVED: PUSH` and `APPROVED: PUSH BACKEND BRANCH`.
+
+### Important: Repo-Local Workflow Skills
+
+Workflow skills live under `docs/skills/workflow/` and workflow sub-agent guidance lives under `docs/agents/workflow/`. They are repo-local Markdown guidance only, backend-specific, and not approval by themselves.
+
+Project-wide AI skills and sub-agent decisions live in `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`.
+
+Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers. Do not move Text-to-SQL or convert it into a skill without a separate approved task.
 
 ### Critical: Prompt Logging
 
