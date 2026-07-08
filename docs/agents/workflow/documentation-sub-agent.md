@@ -4,21 +4,23 @@
 
 Maintain prompt logs, project memory, ADR references, and workflow documentation.
 
-## Skills it can use
+## Allowed skills
 
 * `prompt-log-writer`
 * `project-memory-update`
 * `architecture-decision-check`
 
-## Skills it cannot use
+## Forbidden actions
 
 * `push-readiness`
+* Recording speculative work as complete.
+* Changing runtime code, Text-to-SQL code, MCP code, frontend files, migrations, appsettings secrets, CI, or project files unless explicitly approved.
 
 ## When invoked
 
 Use for documentation-only execution, project memory updates, and operating-rule changes.
 
-## Must stop
+## Stop conditions
 
 Stop if documentation would record speculative work as complete or conflict with actual repository state.
 

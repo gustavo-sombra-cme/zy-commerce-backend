@@ -6,7 +6,7 @@ Confirm a branch is ready to push without making push automatic.
 
 ## When to use
 
-Use after commit and before any push request.
+Required after commit and before any push request.
 
 ## Inputs
 
@@ -48,6 +48,8 @@ Accepted backend push approval phrases:
 
 * `APPROVED: PUSH`
 * `APPROVED: PUSH BACKEND BRANCH`
+
+Push readiness is not approval. A PASS result only means the branch appears safe to push after one of the accepted approval phrases is present.
 
 ## Final output format
 

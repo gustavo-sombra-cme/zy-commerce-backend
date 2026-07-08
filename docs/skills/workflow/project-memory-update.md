@@ -6,7 +6,7 @@ Keep project memory factual after completed execution tasks.
 
 ## When to use
 
-Use when a task changes project state, operating constraints, workflow rules, architecture, APIs, packages, tests, or documentation structure.
+Required when a task changes project state, operating constraints, workflow rules, architecture, APIs, packages, tests, or documentation structure.
 
 ## Inputs
 
@@ -47,6 +47,8 @@ Use when a task changes project state, operating constraints, workflow rules, ar
 ## Verification expectations
 
 Memory updates must be concise and factual.
+
+Do not record speculative completion. Example: write "Phase 2A wiring documented workflow mappings only" after the docs are updated; do not write "runtime sub-agents implemented" unless runtime code exists.
 
 ## Final output format
 

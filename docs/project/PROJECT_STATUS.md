@@ -410,6 +410,7 @@ Agent rule files:
 - `docs/project/PROMPT_TEMPLATE.md` defines default PLAN MODE and APPROVED EXECUTE expectations, including a strict Plan Output Contract, Plan Self-Validation Rule, branch workflow summary, repo-local workflow skill references, and feature demo slide deliverable rule so future prompts can be shorter without weakening execution lock, prompt logging, architecture, DDD, CQRS, module isolation, testing, or documentation rules.
 - Approved backend execution tasks must create a dedicated `feature/`, `fix/`, `docs/`, or `chore/` branch from latest `main` before implementation and must not commit, push, or create a PR without explicit backend approval.
 - Repo-local workflow skills live under `docs/skills/workflow/` and are Markdown guidance only. They are not approval by themselves and are not shared with the frontend repo.
+- Phase 2A wiring maps repo-local workflow skills and workflow sub-agent guidance into `AGENT.md`, `instructions/*`, and `docs/project/PROMPT_TEMPLATE.md`. This is workflow/documentation wiring only and does not change runtime behavior.
 - Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers.
 
 ## Test Status
@@ -717,6 +718,14 @@ Latest documentation-only execution after AI Skills And Sub-Agent Architecture:
 - Updated AGENT router, instructions, prompt template, and project memory to reference the new docs without making push automatic.
 - No runtime assistant code, Text-to-SQL implementation, MCP code, frontend files, migrations, database schema, appsettings secrets, or response contracts changed.
 - Restore, build, and test were intentionally not run because this was documentation/workflow only.
+
+Latest documentation-only execution after Phase 2A Workflow Skill Wiring:
+
+- Wired repo-local workflow skill docs and workflow sub-agent docs into `AGENT.md`, execution/planning instructions, documentation/memory instructions, completion instructions, and `docs/project/PROMPT_TEMPLATE.md`.
+- Improved `docs/project/CODE_REVIEW.md`, workflow skill docs, and workflow sub-agent docs with clearer required/optional usage, examples, output formats, stop conditions, and AI/Text-to-SQL safety checks.
+- Updated project memory and added prompt log `docs/prompts/091-phase-2-workflow-skill-wiring-execution.md`.
+- This was workflow/documentation wiring only. No runtime assistant code, Text-to-SQL implementation, MCP code, frontend files, migrations, database schema, appsettings secrets, CI, project files, or response contracts changed.
+- Restore, build, and test were intentionally not run because this was documentation/instruction only.
 
 ## Intentionally Absent
 

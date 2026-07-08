@@ -34,6 +34,10 @@ Without approval:
 
 # PLANNING RULES
 
+Planning prompts use the Planning Sub-Agent behavior in `docs/agents/workflow/planning-sub-agent.md`.
+
+Use `docs/skills/workflow/architecture-decision-check.md` when planning boundary, module, runtime AI autonomy, Text-to-SQL strategy, database, package, API, migration, or cross-module changes.
+
 Planning responses must contain, at minimum:
 
 1. Architecture Overview
@@ -66,6 +70,8 @@ Short planning prompts must return every required section from `docs/project/PRO
 
 Short prompts must use applicable repo-local workflow skill docs under `docs/skills/workflow/` for repeated workflow checks instead of duplicating their full checklist text in every response.
 
+Short planning prompts must not invoke execution, commit, push, PR, migration execution, or destructive workflow skills.
+
 Short execution prompts such as "Execute approved feature: Update Product Details" are not valid execution approval unless they include the explicit approval phrase:
 
 APPROVED: EXECUTE
@@ -94,6 +100,12 @@ Short prompts do not override architecture, DDD, CQRS, module isolation, documen
 
 For every `APPROVED: EXECUTE` task:
 
+Apply Execution Sub-Agent behavior from `docs/agents/workflow/execution-sub-agent.md`.
+
+Apply `docs/skills/workflow/branch-start-check.md` before implementation.
+
+Apply `docs/skills/workflow/prompt-log-writer.md` before implementation unless the user explicitly writes `SKIP PROMPT LOG`.
+
 1. Confirm the current repository path.
 2. Confirm the current branch.
 3. Run `git status --short --branch`.
@@ -110,6 +122,7 @@ For every `APPROVED: EXECUTE` task:
 * Do not switch branches, reset, stash, or overwrite files in a dirty worktree without explicit approval.
 * If a new task must start while the primary worktree is dirty, propose a separate clean Git worktree.
 * Do not include unrelated dirty files in a task branch.
+* Dirty worktree safety applies before branch switches, file edits, prompt-log edits, commits, pushes, or verification that may create artifacts.
 
 ## MANUAL COMMIT AND PUSH GATE
 

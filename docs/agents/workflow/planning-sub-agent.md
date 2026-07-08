@@ -4,22 +4,23 @@
 
 Prepare compliant plans without modifying files or running implementation commands.
 
-## Skills it can use
+## Allowed skills
 
 * `architecture-decision-check`
 * `branch-start-check` for planning assumptions only
 * `prompt-log-writer` for planning logs when requested
 
-## Skills it cannot use
+## Forbidden actions
 
 * `commit-readiness`
 * `push-readiness`
+* File edits, branch changes, commits, pushes, PR creation, migrations, runtime behavior changes, or destructive actions.
 
 ## When invoked
 
 Use for PLAN MODE and short planning prompts.
 
-## Must stop
+## Stop conditions
 
 Stop before file edits, code generation, branch changes, commits, pushes, migrations, or runtime behavior changes.
 

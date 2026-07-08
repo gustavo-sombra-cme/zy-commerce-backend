@@ -60,6 +60,7 @@
 - Feature demo slide deliverable workflow
 - Backend branch workflow rules
 - AI skills and sub-agent architecture documentation
+- Phase 2A workflow skill wiring into backend Codex/harness instructions
 
 ## Current Priorities
 
@@ -74,6 +75,7 @@
   - Update `docs/project/AI_HANDOFF.md` for constraint changes.
   - Update `docs/project/ROADMAP.md` for milestone changes.
 - Keep AGENT.md and instruction files synchronized when operating rules change.
+- Keep repo-local workflow skill and sub-agent guidance wired through `AGENT.md`, `instructions/*`, and `docs/project/PROMPT_TEMPLATE.md` without treating guidance as approval.
 - Continue adding features only through explicit planning and approval.
 
 ## Catalog Candidates
@@ -202,3 +204,4 @@ Potential future work:
 - README onboarding once the architecture stabilizes
 - Reusable cross-project Codex skill for feature demo slide generation after the repo workflow proves stable
 - Additional repo-local workflow skill examples if future backend workflow gaps appear
+- Later consider API-layer runtime assistant sub-agents through a separate approved plan; do not infer them from the workflow Markdown guidance.

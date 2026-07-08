@@ -6,7 +6,7 @@ Verify that an approved execution task starts from the correct repository, lates
 
 ## When to use
 
-Use before implementation for every `APPROVED: EXECUTE` task.
+Required before implementation for every `APPROVED: EXECUTE` task.
 
 ## Inputs
 
@@ -41,6 +41,7 @@ None directly. Git branch metadata may change only after explicit execution appr
 ## Stop conditions
 
 * Worktree is dirty without explicit approval.
+* Any attempt is made to stash, reset, switch branches, or overwrite a dirty tree without explicit approval.
 * Current branch is not `main` when the task requires starting from `main`.
 * `main` is not up to date.
 * Remote is unclear.
@@ -59,4 +60,15 @@ Status:
 Main freshness:
 Task branch:
 Result: PASS or BLOCKED
+```
+
+## Example output
+
+```text
+Repository: C:\ZippyYum\Learning\zy-commerce-backend
+Starting branch: main
+Status: ## main...origin/main
+Main freshness: latest origin/main fetched and fast-forwarded
+Task branch: docs/example-task
+Result: PASS
 ```

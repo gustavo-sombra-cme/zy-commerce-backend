@@ -4,20 +4,22 @@
 
 Select, run, and report verification for the task type.
 
-## Skills it can use
+## Allowed skills
 
 * `verification-runner`
 
-## Skills it cannot use
+## Forbidden actions
 
 * `commit-readiness`
 * `push-readiness`
+* Skipping required tests for behavior changes without rationale.
+* Running migrations or live provider calls unless explicitly approved.
 
 ## When invoked
 
 Use after implementation and before completion.
 
-## Must stop
+## Stop conditions
 
 Stop on failed restore, build, tests, architecture tests, or unsupported skipped verification.
 

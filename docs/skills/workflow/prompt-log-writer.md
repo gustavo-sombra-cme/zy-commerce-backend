@@ -6,7 +6,7 @@ Create chronological prompt logs for planning, execution, testing, documentation
 
 ## When to use
 
-Use before execution unless the user explicitly writes `SKIP PROMPT LOG`.
+Required before execution unless the user explicitly writes `SKIP PROMPT LOG`.
 
 ## Inputs
 
@@ -41,6 +41,15 @@ Use before execution unless the user explicitly writes `SKIP PROMPT LOG`.
 ## Verification expectations
 
 Confirm the prompt number is the next available number.
+
+If `090-title.md` already exists, the next log must use `091-...md`; do not reuse `090` with a different title.
+
+Prompt status lifecycle is:
+
+* `PLANNED` for planning records.
+* `APPROVED` when execution is approved but not complete.
+* `EXECUTED` after successful completion.
+* `FAILED` when execution stops because of a blocker or failed verification.
 
 ## Final output format
 

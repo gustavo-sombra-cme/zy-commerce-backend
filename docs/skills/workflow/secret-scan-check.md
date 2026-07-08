@@ -6,7 +6,7 @@ Prevent secrets and sensitive configuration from entering commits.
 
 ## When to use
 
-Use before every commit and before push readiness.
+Required before every commit and before push readiness.
 
 ## Inputs
 
@@ -41,6 +41,8 @@ None.
 ## Verification expectations
 
 Confirm `appsettings*.json` does not receive real secrets.
+
+Placeholder examples such as `<API_KEY>` or `your-password-here` are acceptable in docs. Real-looking tokens, JWTs, passwords, connection strings with credentials, or provider keys are blockers.
 
 ## Final output format
 

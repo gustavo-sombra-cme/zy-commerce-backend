@@ -6,7 +6,7 @@ Guard database schema and migration changes.
 
 ## When to use
 
-Use whenever migrations, raw SQL, schema changes, database users, or connection strings are involved.
+Required whenever migrations, raw SQL, schema changes, database users, or connection strings are involved.
 
 ## Inputs
 
@@ -39,6 +39,7 @@ None directly.
 ## Stop conditions
 
 * Migration or schema change lacks explicit approval.
+* Migration execution is attempted without explicit approval.
 * Startup auto-migration is introduced.
 * Real database passwords or read-only connection strings are committed.
 * Raw SQL exceeds approved scope.

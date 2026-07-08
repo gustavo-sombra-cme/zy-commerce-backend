@@ -4,23 +4,24 @@
 
 Review security-sensitive changes and AI safety boundaries.
 
-## Skills it can use
+## Allowed skills
 
 * `secret-scan-check`
 * `migration-safety-check`
 * `architecture-decision-check`
 * `code-review-check`
 
-## Skills it cannot use
+## Forbidden actions
 
 * `commit-readiness`
 * `push-readiness`
+* Approving secrets, sensitive logging, raw SQL exposure, cross-user data exposure, or admin/write AI expansion.
 
 ## When invoked
 
 Use for auth, authorization, logging, secrets, provider configuration, Text-to-SQL, MCP, assistant safety, and database changes.
 
-## Must stop
+## Stop conditions
 
 Stop on secrets, broadened data exposure, cross-user risk, unsafe SQL, admin/write AI behavior, or sensitive logging.
 
