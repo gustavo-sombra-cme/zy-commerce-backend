@@ -16,6 +16,16 @@ The review must be included in the execution summary.
 
 ---
 
+# CODE REVIEW RULE
+
+Before any commit that includes code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes, run the review checklist in `docs/project/CODE_REVIEW.md`.
+
+Documentation-only maintenance changes are excluded from mandatory `CODE_REVIEW.md`, but still require documentation self-review.
+
+Code review findings must lead the report and must stop commit readiness when they identify bugs, architecture violations, missing tests for behavior changes, security risks, secrets, generated artifacts, or unrelated changes.
+
+---
+
 # EXECUTION SUMMARY FORMAT
 
 Execution summaries must report:

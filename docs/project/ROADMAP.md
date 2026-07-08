@@ -58,11 +58,14 @@
 - Prompt standardization and reusable prompt template setup
 - Prompt template compliance contract enhancement
 - Feature demo slide deliverable workflow
+- Backend branch workflow rules
+- AI skills and sub-agent architecture documentation
 
 ## Current Priorities
 
 - Keep architecture tests green as modules evolve.
 - Use `docs/project/PROMPT_TEMPLATE.md` to keep future planning and execution prompts shorter while preserving approval, logging, architecture, DDD, CQRS, testing, and documentation rules.
+- Use repo-local workflow skill docs under `docs/skills/workflow/` for repeated Codex/harness checks while keeping approval gates explicit.
 - For short planning prompts, preserve the full Plan Output Contract and Plan Self-Validation Rule in `docs/project/PROMPT_TEMPLATE.md`.
 - For main/demo-worthy feature executions, create or update `docs/demo/features/{feature-slug}-demo-slides.md` with slide-ready Markdown, Mermaid diagrams where useful, speaker cues, demo script, test evidence, risks/tradeoffs, and Q&A talking points.
 - Keep project memory documentation current after execution tasks.
@@ -155,6 +158,8 @@ Not currently started:
 
 Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, and fake provider tests only.
 
+Runtime assistant sub-agents, if introduced later, should remain API-layer classes. Catalog, Orders, and Auth modules should not know about agents, prompts, model planning, Text-to-SQL routing, or provider diagnostics.
+
 Potential future phases:
 
 - Production provider configuration and operational smoke testing outside automated tests
@@ -162,6 +167,7 @@ Potential future phases:
 - Additional provider-specific payload tuning if future providers are introduced
 - Additional read-only analysis tools after explicit approval
 - Text-to-SQL operational smoke testing after local read-only connection strings are configured
+- Selectable Text-to-SQL strategy with explicit telemetry, without moving or converting the current Text-to-SQL implementation into a skill until separately approved
 - Dedicated assistant authorization policy or rate limiting
 - Frontend integration with the backend assistant endpoint
 
@@ -195,3 +201,4 @@ Potential future work:
 - Learning journal entries when requested
 - README onboarding once the architecture stabilizes
 - Reusable cross-project Codex skill for feature demo slide generation after the repo workflow proves stable
+- Additional repo-local workflow skill examples if future backend workflow gaps appear

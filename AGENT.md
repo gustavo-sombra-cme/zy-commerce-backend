@@ -17,7 +17,14 @@ Reusable prompt workflow:
 
 * `docs/project/PROMPT_TEMPLATE.md`
 
-Short prompts such as "Plan next Catalog feature: Update Product Details" or "Execute approved feature: Update Product Details" must be expanded using the reusable prompt template, instruction files, and project memory.
+Repo-local workflow skills and sub-agent guidance:
+
+* `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`
+* `docs/skills/workflow/`
+* `docs/agents/workflow/`
+* `docs/project/CODE_REVIEW.md`
+
+Short prompts such as "Plan next Catalog feature: Update Product Details" or "Execute approved feature: Update Product Details" must be expanded using the reusable prompt template, instruction files, project memory, and applicable repo-local workflow skill docs.
 
 Stable rule references:
 
@@ -29,6 +36,7 @@ Stable rule references:
 * `instructions/01-execution-and-planning.md#state-machine`
 * `instructions/01-execution-and-planning.md#execution-lock`
 * `instructions/01-execution-and-planning.md#planning-rules`
+* `instructions/01-execution-and-planning.md#branch-workflow-rules`
 * `instructions/02-architecture-and-modules.md#clean-architecture-rules`
 * `instructions/02-architecture-and-modules.md#module-rules`
 * `instructions/03-cqrs-database-testing-security.md#cqrs-rules`
@@ -38,6 +46,7 @@ Stable rule references:
 * `instructions/03-cqrs-database-testing-security.md#security-rules`
 * `instructions/04-documentation-and-memory.md#prompt-logging-rule`
 * `instructions/04-documentation-and-memory.md#ai-project-memory-rule`
+* `instructions/04-documentation-and-memory.md#repo-local-workflow-skills-rule`
 * `instructions/04-documentation-and-memory.md#next_sessionmd-maintenance-rule`
 * `instructions/04-documentation-and-memory.md#project_statusmd-maintenance-rule`
 * `instructions/04-documentation-and-memory.md#ai_handoffmd-maintenance-rule`
@@ -46,6 +55,7 @@ Stable rule references:
 * `instructions/04-documentation-and-memory.md#architecture-decision-record-rule`
 * `instructions/04-documentation-and-memory.md#learning-journal-rule`
 * `instructions/05-completion.md#self-review-rule`
+* `instructions/05-completion.md#code-review-rule`
 * `instructions/05-completion.md#completion-rule`
 
 When `AGENT.md` changes, provide and apply a full replacement `AGENT.md`.

@@ -15,7 +15,11 @@ Agent operating rules are split between a short `AGENT.md` router and detailed f
 - `docs/project/ROADMAP.md` - Completed and candidate work
 - `docs/project/NEXT_SESSION.md` - Fast resume guide (< 5 minutes to read)
 - `docs/project/PROMPT_TEMPLATE.md` - Reusable planning and execution prompt defaults for shorter future prompts
+- `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md` - Repo-local AI workflow skill and sub-agent architecture decisions
+- `docs/project/CODE_REVIEW.md` - Backend code review checklist for code/config/migration/CI/runtime-behavior documentation changes
 - `docs/project/FRONTEND_CONTRACT.md` - Frontend-facing API contract notes
+- `docs/skills/workflow/` - Repo-local workflow skill docs for repeated Codex/harness checks
+- `docs/agents/workflow/` - Repo-local workflow sub-agent responsibility guidance
 - `docs/demo/features/` - Feature-focused demo slide source files for main/demo-worthy feature executions
 
 ## Solution Structure
@@ -401,10 +405,12 @@ Agent rule files:
 - `instructions/01-execution-and-planning.md` also contains backend branch workflow rules requiring one task, one branch, one PR; latest `main` start; dirty-worktree safety; and manual commit/push/PR gates.
 - `instructions/02-architecture-and-modules.md` contains Clean Architecture and module rules.
 - `instructions/03-cqrs-database-testing-security.md` contains CQRS, DDD ownership, database, testing, architecture test, and security rules.
-- `instructions/04-documentation-and-memory.md` contains prompt logging, reusable template location, project memory, feature demo slide deliverables, AGENT replacement, ADR, and learning journal rules.
-- `instructions/05-completion.md` contains self-review, execution summary, and completion rules.
-- `docs/project/PROMPT_TEMPLATE.md` defines default PLAN MODE and APPROVED EXECUTE expectations, including a strict Plan Output Contract, Plan Self-Validation Rule, and feature demo slide deliverable rule so future prompts can be shorter without weakening execution lock, prompt logging, architecture, DDD, CQRS, module isolation, testing, or documentation rules.
+- `instructions/04-documentation-and-memory.md` contains prompt logging, reusable template location, project memory, repo-local workflow skills, feature demo slide deliverables, AGENT replacement, ADR, and learning journal rules.
+- `instructions/05-completion.md` contains self-review, code review, execution summary, and completion rules.
+- `docs/project/PROMPT_TEMPLATE.md` defines default PLAN MODE and APPROVED EXECUTE expectations, including a strict Plan Output Contract, Plan Self-Validation Rule, branch workflow summary, repo-local workflow skill references, and feature demo slide deliverable rule so future prompts can be shorter without weakening execution lock, prompt logging, architecture, DDD, CQRS, module isolation, testing, or documentation rules.
 - Approved backend execution tasks must create a dedicated `feature/`, `fix/`, `docs/`, or `chore/` branch from latest `main` before implementation and must not commit, push, or create a PR without explicit backend approval.
+- Repo-local workflow skills live under `docs/skills/workflow/` and are Markdown guidance only. They are not approval by themselves and are not shared with the frontend repo.
+- Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers.
 
 ## Test Status
 
@@ -701,6 +707,16 @@ Latest documentation-only execution after Backend Branch Workflow Rules:
 - Updated reusable prompt defaults and project memory to preserve the rule for future sessions.
 - No application code, project references, packages, APIs, database schema, or migrations changed.
 - Restore, build, and test were intentionally not run.
+
+Latest documentation-only execution after AI Skills And Sub-Agent Architecture:
+
+- Added `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md` to document repo-local workflow skills, workflow sub-agent guidance, API-layer runtime sub-agent decisions, and Text-to-SQL non-migration.
+- Added `docs/project/CODE_REVIEW.md`.
+- Added repo-local workflow skill docs under `docs/skills/workflow/`.
+- Added workflow sub-agent guidance under `docs/agents/workflow/`.
+- Updated AGENT router, instructions, prompt template, and project memory to reference the new docs without making push automatic.
+- No runtime assistant code, Text-to-SQL implementation, MCP code, frontend files, migrations, database schema, appsettings secrets, or response contracts changed.
+- Restore, build, and test were intentionally not run because this was documentation/workflow only.
 
 ## Intentionally Absent
 
