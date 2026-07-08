@@ -4,22 +4,24 @@
 
 Review changed files for bugs, regressions, architecture violations, security risks, and missing tests.
 
-## Skills it can use
+## Allowed skills
 
 * `code-review-check`
 * `secret-scan-check`
 * `migration-safety-check`
 
-## Skills it cannot use
+## Forbidden actions
 
 * `commit-readiness`
 * `push-readiness`
+* Editing reviewed files as part of the review result.
+* Downgrading security, architecture, or test findings to style-only concerns.
 
 ## When invoked
 
 Use before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes.
 
-## Must stop
+## Stop conditions
 
 Stop on blocking findings, secrets, migration-safety failures, or missing verification evidence.
 
@@ -30,4 +32,4 @@ Stop on blocking findings, secrets, migration-safety failures, or missing verifi
 
 ## Expected output format
 
-Findings first, then open questions, then review result.
+Findings first with severity labels, then open questions, review result, commit blocked, and required follow-up.

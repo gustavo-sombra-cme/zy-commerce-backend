@@ -36,6 +36,8 @@ Create it automatically.
 
 Prompt logging must occur before execution begins.
 
+Use `docs/skills/workflow/prompt-log-writer.md` for prompt logging.
+
 The only exception is when the user explicitly writes:
 
 SKIP PROMPT LOG
@@ -76,6 +78,8 @@ Code review guidance lives in:
 
 docs/project/CODE_REVIEW.md
 
+Documentation-only tasks use Documentation Sub-Agent behavior from `docs/agents/workflow/documentation-sub-agent.md`.
+
 ---
 
 # AI PROJECT MEMORY RULE
@@ -111,6 +115,8 @@ After every completed execution task, update these files when the task changes:
 Project memory must be factual, concise, and aligned with the current repository.
 
 Do not record speculative work as completed.
+
+Use `docs/skills/workflow/project-memory-update.md` for project memory updates.
 
 ---
 
@@ -272,6 +278,8 @@ The replacement must preserve all still-valid rules and explicitly include any n
 # ARCHITECTURE DECISION RECORD RULE
 
 Major architectural decisions must be recorded.
+
+Use `docs/skills/workflow/architecture-decision-check.md` to decide whether an ADR is required.
 
 Location:
 

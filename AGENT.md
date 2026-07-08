@@ -17,14 +17,37 @@ Reusable prompt workflow:
 
 * `docs/project/PROMPT_TEMPLATE.md`
 
-Repo-local workflow skills and sub-agent guidance:
+Repo-local workflow architecture:
 
 * `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`
-* `docs/skills/workflow/`
-* `docs/agents/workflow/`
 * `docs/project/CODE_REVIEW.md`
 
-Short prompts such as "Plan next Catalog feature: Update Product Details" or "Execute approved feature: Update Product Details" must be expanded using the reusable prompt template, instruction files, project memory, and applicable repo-local workflow skill docs.
+Repo-local workflow skills:
+
+* `docs/skills/workflow/branch-start-check.md`
+* `docs/skills/workflow/prompt-log-writer.md`
+* `docs/skills/workflow/code-review-check.md`
+* `docs/skills/workflow/commit-readiness.md`
+* `docs/skills/workflow/push-readiness.md`
+* `docs/skills/workflow/verification-runner.md`
+* `docs/skills/workflow/secret-scan-check.md`
+* `docs/skills/workflow/project-memory-update.md`
+* `docs/skills/workflow/architecture-decision-check.md`
+* `docs/skills/workflow/migration-safety-check.md`
+
+Repo-local workflow sub-agent guidance:
+
+* `docs/agents/workflow/planning-sub-agent.md`
+* `docs/agents/workflow/execution-sub-agent.md`
+* `docs/agents/workflow/code-review-sub-agent.md`
+* `docs/agents/workflow/git-workflow-sub-agent.md`
+* `docs/agents/workflow/documentation-sub-agent.md`
+* `docs/agents/workflow/security-review-sub-agent.md`
+* `docs/agents/workflow/test-verification-sub-agent.md`
+
+Skill and sub-agent docs are workflow guidance only. They are not approval, and they must not make execution, commit, push, PR creation, migration execution, deployment, destructive actions, or runtime AI behavior automatic.
+
+Short prompts such as "Plan next Catalog feature: Update Product Details" or "Execute approved feature: Update Product Details" must be expanded using the reusable prompt template, instruction files, project memory, recent prompt logs, and applicable repo-local workflow skill docs.
 
 Stable rule references:
 

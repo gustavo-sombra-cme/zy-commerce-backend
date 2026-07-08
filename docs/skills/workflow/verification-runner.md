@@ -6,7 +6,7 @@ Select and run the appropriate verification for the change type.
 
 ## When to use
 
-Use after implementation and before commit readiness.
+Required for code, project, configuration, migration, CI, and runtime-behavior documentation changes. Optional for documentation-only maintenance.
 
 ## Inputs
 
@@ -52,6 +52,16 @@ dotnet test Ecommerce.sln
 ```
 
 For documentation-only maintenance, perform documentation self-review.
+
+Docs-only example:
+
+```text
+Change type: documentation-only workflow guidance
+Commands: git diff --check
+Results: PASS
+Skipped: dotnet restore/build/test skipped because no source, project, CI, config, migration, or runtime behavior changed
+Verification: PASS
+```
 
 ## Final output format
 

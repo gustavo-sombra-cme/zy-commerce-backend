@@ -6,7 +6,7 @@ Determine whether a proposed change requires an ADR or explicit architecture app
 
 ## When to use
 
-Use for new modules, packages, APIs, runtime AI autonomy, Text-to-SQL strategy changes, migrations, cross-module integration, or boundary changes.
+Required for new modules, packages, APIs, runtime AI autonomy, Text-to-SQL strategy changes, migrations, cross-module integration, or major boundary changes.
 
 ## Inputs
 
@@ -45,6 +45,10 @@ Use for new modules, packages, APIs, runtime AI autonomy, Text-to-SQL strategy c
 ## Verification expectations
 
 State why an ADR is or is not required.
+
+ADR example: introducing runtime assistant sub-agent classes that change API orchestration boundaries.
+
+Non-ADR example: adding examples to repo-local workflow skill docs without changing runtime or architecture.
 
 ## Final output format
 

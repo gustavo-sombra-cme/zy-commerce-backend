@@ -6,7 +6,7 @@ Review changes for bugs, architecture risks, missing tests, security issues, and
 
 ## When to use
 
-Use before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes.
+Required before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes. Optional for documentation-only maintenance.
 
 ## Inputs
 
@@ -20,6 +20,13 @@ Use before commits that include code, project/configuration files, migrations, C
 * Findings-first review.
 * Open questions.
 * PASS or BLOCKED result.
+
+Severity labels:
+
+* `BLOCKER` blocks commit.
+* `HIGH` normally blocks commit unless explicitly accepted.
+* `MEDIUM` requires follow-up or clear rationale.
+* `LOW` is informational or cleanup-level.
 
 ## Required reading
 
@@ -56,4 +63,6 @@ Review must mention whether build/test evidence is present or why it is not requ
 Findings:
 Open Questions:
 Review Result: PASS or BLOCKED
+Commit Blocked: YES or NO
+Required Follow-up:
 ```

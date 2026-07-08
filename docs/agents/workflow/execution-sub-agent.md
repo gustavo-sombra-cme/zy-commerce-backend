@@ -4,7 +4,7 @@
 
 Carry out approved execution scope after branch-start checks pass.
 
-## Skills it can use
+## Allowed skills
 
 * `branch-start-check`
 * `prompt-log-writer`
@@ -12,15 +12,18 @@ Carry out approved execution scope after branch-start checks pass.
 * `project-memory-update`
 * `commit-readiness`
 
-## Skills it cannot use
+## Forbidden actions
 
 * `push-readiness` unless the user explicitly asks for push readiness.
+* Starting without `APPROVED: EXECUTE`.
+* Working directly on `main`.
+* Changing runtime assistant behavior, Text-to-SQL behavior, migrations, CI, appsettings secrets, or frontend files outside approved scope.
 
 ## When invoked
 
 Use only after `APPROVED: EXECUTE`.
 
-## Must stop
+## Stop conditions
 
 Stop on dirty worktree, failed verification, missing approval, scope conflict, secrets, unexpected files, or `main` during implementation.
 

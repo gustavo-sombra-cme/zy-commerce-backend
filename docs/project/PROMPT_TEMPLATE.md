@@ -28,6 +28,9 @@ Before planning or execution, read:
 
 When the prompt starts with `PLAN MODE` or `Plan ...`:
 
+* Use Planning Sub-Agent behavior from `docs/agents/workflow/planning-sub-agent.md`.
+* Use `docs/skills/workflow/architecture-decision-check.md` for boundary, module, AI autonomy, Text-to-SQL strategy, database, package, API, migration, or cross-module decisions.
+* Do not invoke execution, commit, push, PR, migration execution, or destructive workflow skills.
 * Do not create code.
 * Do not modify files unless the user explicitly asks for documentation updates.
 * Do not run build, test, EF, scaffold, or migration commands.
@@ -261,12 +264,17 @@ PLAN_STATUS: PENDING_APPROVAL
 When the prompt starts with `APPROVED: EXECUTE` or `Execute approved ...`:
 
 * Execution is allowed only for the approved scope.
-* Follow the Branch Workflow Rules in `instructions/01-execution-and-planning.md` before changing files.
-* Use applicable repo-local workflow skills in `docs/skills/workflow/` for repeated workflow checks.
-* Create or update the planning prompt log and create the execution prompt log before implementation, unless `SKIP PROMPT LOG` is present.
+* Run `docs/skills/workflow/branch-start-check.md`.
+* Run `docs/skills/workflow/prompt-log-writer.md` before implementation unless `SKIP PROMPT LOG` is present.
+* Use Execution Sub-Agent behavior from `docs/agents/workflow/execution-sub-agent.md`.
 * Follow the approved plan exactly.
 * Do not add unapproved modules, projects, migrations, schema changes, APIs, packages, auth behavior, or cross-module references.
-* Update project memory after completed execution when project state changes.
+* Run `docs/skills/workflow/verification-runner.md`.
+* Run `docs/skills/workflow/project-memory-update.md` when project state changes.
+* Run `docs/skills/workflow/code-review-check.md` when the change includes code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation.
+* Run `docs/skills/workflow/secret-scan-check.md`.
+* Run `docs/skills/workflow/commit-readiness.md` before any approved local commit.
+* Run `docs/skills/workflow/push-readiness.md` only after explicit push approval.
 * Create or update the feature demo slide deliverable when the approved scope is a main feature, major platform capability, API module, integration, or demo-worthy backend behavior.
 * Run standard verification for code or project changes.
 
@@ -297,7 +305,7 @@ Do not work directly on `main`, push directly to `main`, commit automatically, p
 * `APPROVED: CREATE BACKEND PR`
 * `APPROVED: COMMIT AND PUSH BACKEND CHANGES`
 
-Readiness skills can recommend commit or push readiness, but they are never approval by themselves.
+Before an approved local commit, required skills include verification, secret scan, applicable code review, and commit readiness. Push readiness is not approval. Push requires `APPROVED: PUSH` or `APPROVED: PUSH BACKEND BRANCH`.
 
 Add manual verification when API, auth, database, Swagger, or behavior-visible changes are involved.
 

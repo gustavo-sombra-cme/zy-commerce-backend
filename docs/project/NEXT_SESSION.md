@@ -48,6 +48,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Feature demo slide deliverable workflow (`docs/demo/features/{feature-slug}-demo-slides.md`)
 - Backend branch workflow rules (`one task = one branch = one PR`)
 - AI skills and sub-agent architecture documentation (`docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`, `docs/skills/workflow/`, `docs/agents/workflow/`)
+- Phase 2A workflow skill wiring into backend Codex/harness instructions and prompt template; documentation-only, no runtime behavior changed
 
 ---
 
@@ -346,6 +347,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 43. Conservative Assistant Text-to-SQL status cleanup
 44. Backend branch workflow rules
 45. AI skills and sub-agent architecture documentation
+46. Phase 2A workflow skill wiring into backend Codex/harness instructions
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -370,9 +372,11 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 **There is no currently approved task.**
 
-The last completed work was AI Skills And Sub-Agent Architecture Documentation. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Phase 2A workflow skill wiring into backend Codex/harness instructions. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 The backend branch workflow now requires starting approved execution tasks from latest `main` on a new dedicated branch, with dirty-worktree safety and manual commit/push/PR gates.
+
+Phase 2A was workflow/documentation wiring only. It did not change runtime assistant behavior, Text-to-SQL behavior, MCP behavior, frontend contracts, database schema, CI, project files, or appsettings secrets.
 
 **How to Proceed:**
 

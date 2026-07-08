@@ -74,6 +74,8 @@ Short planning prompts must follow the template's Plan Output Contract exactly a
 
 Repo-local workflow skills are Markdown guidance only under `docs/skills/workflow/`; workflow sub-agent guidance lives under `docs/agents/workflow/`. They are backend-specific, not shared with the frontend repository, and do not replace explicit user approval.
 
+Phase 2A wires those workflow skill and sub-agent docs into the backend Codex/harness instructions and prompt template only. It does not change runtime assistant behavior, Text-to-SQL behavior, MCP behavior, frontend contracts, database schema, CI, project files, or appsettings secrets.
+
 Project-wide AI skills and sub-agent decisions live in `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`. Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers.
 
 Before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes, use `docs/project/CODE_REVIEW.md`. Documentation-only maintenance is excluded from mandatory code review but still requires documentation self-review.

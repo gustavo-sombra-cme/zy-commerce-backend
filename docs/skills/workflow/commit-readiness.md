@@ -6,7 +6,7 @@ Confirm a branch is ready for a local commit after implementation and verificati
 
 ## When to use
 
-Use after implementation and before any approved local commit.
+Required after implementation and before any approved local commit.
 
 ## Inputs
 
@@ -41,6 +41,7 @@ None.
 ## Stop conditions
 
 * Current branch is `main`.
+* Branch was not created through the start-of-execution flow in `instructions/01-execution-and-planning.md`.
 * Unrelated files are changed.
 * Required verification failed or was skipped without justification.
 * Required code review is missing.
