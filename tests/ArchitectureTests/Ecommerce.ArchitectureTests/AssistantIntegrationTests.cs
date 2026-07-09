@@ -27,8 +27,12 @@ using OrdersPagedResult = Ecommerce.Orders.Application.Abstractions.PagedResult<
 
 namespace Ecommerce.ArchitectureTests;
 
-public sealed class AssistantIntegrationTests
+public sealed class AssistantIntegrationTests : IDisposable
 {
+    private readonly ScopedAssistantEnvironment assistantEnvironment = ScopedAssistantEnvironment.Clear();
+
+    public void Dispose() => assistantEnvironment.Dispose();
+
     [Fact]
     public void AssistantToolRegistry_ShouldExposeOnlyApprovedReadOnlyAllowlist()
     {
@@ -421,6 +425,15 @@ public sealed class AssistantIntegrationTests
         Assert.Contains("\"Enabled\": false", appsettings, StringComparison.Ordinal);
         Assert.DoesNotContain("AssistantCatalogReadOnly", appsettings, StringComparison.Ordinal);
         Assert.DoesNotContain("AssistantOrdersReadOnly", appsettings, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Program_ShouldRegisterOrdersAssistantSubAgent()
+    {
+        var root = ProjectGraph.GetRootPath();
+        var program = File.ReadAllText(Path.Combine(root, "src", "Api", "Ecommerce.Api", "Program.cs"));
+
+        Assert.Contains("AddScoped<IOrdersAssistantSubAgent, OrdersAssistantSubAgent>", program, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -1638,6 +1651,26 @@ public sealed class AssistantIntegrationTests
         Assert.DoesNotContain("ReactivateProduct", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void OrdersAssistantSubAgent_ShouldStayInsideAllowedApiLayerBoundary()
+    {
+        var root = ProjectGraph.GetRootPath();
+        var source = File.ReadAllText(Path.Combine(root, "src", "Api", "Ecommerce.Api", "Assistant", "OrdersAssistantSubAgent.cs"));
+
+        Assert.Contains("ISender", source, StringComparison.Ordinal);
+        Assert.Contains("ListOrdersForBuyerQuery", source, StringComparison.Ordinal);
+        Assert.Contains("GetOrderByIdQuery", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Repository", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ecommerce.Orders.Domain", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ecommerce.Orders.Infrastructure", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ecommerce.Api.Mcp", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Gemini", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpAssistantLlmClient", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("TextToSql", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CreateOrderCommand", source, StringComparison.Ordinal);
+    }
+
     public static IEnumerable<object[]> InvalidModelPlans()
     {
         yield return
@@ -1690,13 +1723,14 @@ public sealed class AssistantIntegrationTests
         var intentRouter = new AssistantIntentRouter(safetyPolicy);
         var deterministicInterpreter = new DeterministicAssistantIntentInterpreter(intentRouter);
         var toolRegistry = new AssistantToolRegistry();
+        var ordersAssistantSubAgent = new OrdersAssistantSubAgent(sender, toolRegistry);
 
         return new AssistantOrchestrator(
             sender,
+            ordersAssistantSubAgent,
             interpreter ?? deterministicInterpreter,
             deterministicInterpreter,
             new AssistantIntentPlanValidator(toolRegistry, safetyPolicy),
-            toolRegistry,
             textToSqlPlanner ?? new RecordingTextToSqlPlanner(AssistantTextToSqlPlan.Unsupported()),
             CreateSqlValidator(),
             textToSqlExecutor ?? new RecordingTextToSqlExecutor(AssistantSqlResult.Failure()),
@@ -1815,6 +1849,49 @@ public sealed class AssistantIntegrationTests
                 MaxResponseCharacters = 4000
             }),
             NullLogger<LlmAssistantTextToSqlPlanner>.Instance);
+
+    private sealed class ScopedAssistantEnvironment : IDisposable
+    {
+        private static readonly string[] VariableNames =
+        [
+            "ECOMMERCE_ASSISTANT_LLM_PROVIDER",
+            "ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT",
+            "ECOMMERCE_ASSISTANT_GEMINI_MODEL",
+            "ECOMMERCE_ASSISTANT_GEMINI_API_KEY",
+            "ECOMMERCE_ASSISTANT_TEXT_TO_SQL_ENABLED",
+            "Assistant__TextToSql__Enabled",
+            "ConnectionStrings__AssistantCatalogReadOnly",
+            "ConnectionStrings__AssistantOrdersReadOnly"
+        ];
+
+        private readonly Dictionary<string, string?> previousValues;
+
+        private ScopedAssistantEnvironment(Dictionary<string, string?> previousValues)
+        {
+            this.previousValues = previousValues;
+        }
+
+        public static ScopedAssistantEnvironment Clear()
+        {
+            var previousValues = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+            foreach (var variableName in VariableNames)
+            {
+                previousValues[variableName] = Environment.GetEnvironmentVariable(variableName);
+                Environment.SetEnvironmentVariable(variableName, null);
+            }
+
+            return new ScopedAssistantEnvironment(previousValues);
+        }
+
+        public void Dispose()
+        {
+            foreach (var (variableName, value) in previousValues)
+            {
+                Environment.SetEnvironmentVariable(variableName, value);
+            }
+        }
+    }
 
     private static AssistantTextToSqlPlan OrdersPlan(int top = 10) =>
         new(
