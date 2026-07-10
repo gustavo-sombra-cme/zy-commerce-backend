@@ -436,6 +436,15 @@ public sealed class AssistantIntegrationTests : IDisposable
         Assert.Contains("AddScoped<IOrdersAssistantSubAgent, OrdersAssistantSubAgent>", program, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Program_ShouldRegisterCatalogAssistantSubAgent()
+    {
+        var root = ProjectGraph.GetRootPath();
+        var program = File.ReadAllText(Path.Combine(root, "src", "Api", "Ecommerce.Api", "Program.cs"));
+
+        Assert.Contains("AddScoped<ICatalogAssistantSubAgent, CatalogAssistantSubAgent>", program, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (10) ProductId, Name FROM assistant.v_ProductSearch")]
     [InlineData(AssistantSqlDataSource.Catalog, "SELECT TOP (5) ProductId, Sku FROM assistant.v_ProductDetails WHERE IsActive = 1")]
@@ -1671,6 +1680,29 @@ public sealed class AssistantIntegrationTests : IDisposable
         Assert.DoesNotContain("CreateOrderCommand", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CatalogAssistantSubAgent_ShouldStayInsideAllowedApiLayerBoundary()
+    {
+        var root = ProjectGraph.GetRootPath();
+        var source = File.ReadAllText(Path.Combine(root, "src", "Api", "Ecommerce.Api", "Assistant", "CatalogAssistantSubAgent.cs"));
+
+        Assert.Contains("ISender", source, StringComparison.Ordinal);
+        Assert.Contains("SearchProductsQuery", source, StringComparison.Ordinal);
+        Assert.Contains("GetProductByIdQuery", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Repository", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ecommerce.Catalog.Domain", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ecommerce.Catalog.Infrastructure", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ecommerce.Api.Mcp", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("TextToSql", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Gemini", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpAssistantLlmClient", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CreateProductCommand", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateProduct", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("DeactivateProduct", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReactivateProduct", source, StringComparison.Ordinal);
+    }
+
     public static IEnumerable<object[]> InvalidModelPlans()
     {
         yield return
@@ -1724,10 +1756,11 @@ public sealed class AssistantIntegrationTests : IDisposable
         var deterministicInterpreter = new DeterministicAssistantIntentInterpreter(intentRouter);
         var toolRegistry = new AssistantToolRegistry();
         var ordersAssistantSubAgent = new OrdersAssistantSubAgent(sender, toolRegistry);
+        var catalogAssistantSubAgent = new CatalogAssistantSubAgent(sender);
 
         return new AssistantOrchestrator(
-            sender,
             ordersAssistantSubAgent,
+            catalogAssistantSubAgent,
             interpreter ?? deterministicInterpreter,
             deterministicInterpreter,
             new AssistantIntentPlanValidator(toolRegistry, safetyPolicy),

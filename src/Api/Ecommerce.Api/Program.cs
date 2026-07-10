@@ -57,6 +57,7 @@ builder.Services.Configure<AssistantTextToSqlOptions>(
     builder.Configuration.GetSection(AssistantTextToSqlOptions.SectionName));
 builder.Services.AddScoped<AssistantOrchestrator>();
 builder.Services.AddScoped<IOrdersAssistantSubAgent, OrdersAssistantSubAgent>();
+builder.Services.AddScoped<ICatalogAssistantSubAgent, CatalogAssistantSubAgent>();
 builder.Services.AddSingleton<AssistantSafetyPolicy>();
 builder.Services.AddSingleton<AssistantIntentRouter>();
 builder.Services.AddSingleton<AssistantIntentPlanValidator>();

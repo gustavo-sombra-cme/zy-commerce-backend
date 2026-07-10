@@ -743,6 +743,23 @@ Latest code execution after Phase 3A Runtime Orders Assistant Sub-Agent:
 - Orders unit tests: 23 passed.
 - Architecture tests: 165 passed.
 
+Latest code execution after Phase 3B Runtime Catalog Assistant Sub-Agent:
+
+- Extracted catalog-specific assistant CQRS orchestration into API-layer `ICatalogAssistantSubAgent` and `CatalogAssistantSubAgent`.
+- `AssistantOrchestrator` remains the high-level coordinator for Text-to-SQL first-pass/fallback, intent interpretation, order delegation, catalog delegation, unsupported responses, and response contracts.
+- Catalog assistant behavior is intended to remain unchanged for `CatalogProductsUnderPrice` and `CatalogGetProduct`.
+- Text-to-SQL remains unchanged.
+- `OrdersAssistantSubAgent` remains unchanged.
+- Broad product search by text/name/SKU was not added in this phase.
+- No frontend, MCP, database schema, migration, provider SDK, CI, appsettings secret, tool allowlist, genericTable exposure, admin/write assistant action, or response contract changes were added.
+- `dotnet restore Ecommerce.sln`: passed with NU1900 warnings for unreachable vulnerability feeds.
+- `dotnet build Ecommerce.sln --artifacts-path artifacts\phase3b-build`: passed.
+- `dotnet test Ecommerce.sln --artifacts-path artifacts\phase3b-test`: passed.
+- Catalog unit tests: 83 passed.
+- Auth unit tests: 68 passed.
+- Orders unit tests: 23 passed.
+- Architecture tests: 167 passed.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:

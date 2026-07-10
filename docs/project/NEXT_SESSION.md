@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-07-09
+**Last Updated:** 2026-07-10
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -50,6 +50,7 @@ This file is designed to allow a future AI session to resume project work in les
 - AI skills and sub-agent architecture documentation (`docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`, `docs/skills/workflow/`, `docs/agents/workflow/`)
 - Phase 2A workflow skill wiring into backend Codex/harness instructions and prompt template; documentation-only, no runtime behavior changed
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction; behavior-preserving refactor, no Text-to-SQL strategy change
+- Phase 3B runtime API-layer Catalog assistant sub-agent extraction; behavior-preserving refactor, no broad product search addition
 
 ---
 
@@ -113,6 +114,7 @@ All approved projects exist and build successfully:
 - Implementation lives under `src/Api/Ecommerce.Api/Assistant` and `src/Api/Ecommerce.Api/Controllers/Assistant`.
 - Assistant intent interpretation goes through `IAssistantIntentInterpreter`; disabled-mode production DI resolves `DeterministicAssistantIntentInterpreter` by default.
 - Order-specific assistant CQRS orchestration lives behind API-layer `IOrdersAssistantSubAgent`/`OrdersAssistantSubAgent`; module Application layers remain unaware of assistant agents.
+- Catalog-specific assistant CQRS orchestration lives behind API-layer `ICatalogAssistantSubAgent`/`CatalogAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
 - Provider selection is backend configuration only. `Assistant:Llm:Provider` defaults to `OpenAI`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects `GeminiAssistantLlmClient`.
 - Gemini is a POC/testing provider. Configure it with `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, optional `ECOMMERCE_ASSISTANT_GEMINI_MODEL` (default `gemini-2.5-flash`), and optional `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT` (default `https://generativelanguage.googleapis.com/v1beta`).
@@ -662,7 +664,7 @@ dotnet test Ecommerce.sln
 # - Catalog Unit Tests: 83 passed
 # - Auth Unit Tests: 68 passed
 # - Orders Unit Tests: 23 passed
-# - Architecture Tests: 165 passed
+# - Architecture Tests: 167 passed
 ```
 
 If a local API process is running and locks `src/Api/Ecommerce.Api/bin/Debug/net9.0/Ecommerce.Api.dll`, either stop that process intentionally or verify with isolated artifacts:
