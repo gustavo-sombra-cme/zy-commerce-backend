@@ -727,6 +727,22 @@ Latest documentation-only execution after Phase 2A Workflow Skill Wiring:
 - This was workflow/documentation wiring only. No runtime assistant code, Text-to-SQL implementation, MCP code, frontend files, migrations, database schema, appsettings secrets, CI, project files, or response contracts changed.
 - Restore, build, and test were intentionally not run because this was documentation/instruction only.
 
+Latest code execution after Phase 3A Runtime Orders Assistant Sub-Agent:
+
+- Extracted order-specific assistant CQRS orchestration into API-layer `IOrdersAssistantSubAgent` and `OrdersAssistantSubAgent`.
+- `AssistantOrchestrator` remains the high-level coordinator for Text-to-SQL first-pass/fallback, intent interpretation, catalog handling, unsupported responses, and response contracts.
+- Text-to-SQL remains as-is and was not converted into a skill or selectable runtime strategy in this task.
+- Added assistant test configuration isolation so local assistant environment variables do not change architecture test expectations.
+- Added safe non-secret disabled `Assistant:TextToSql` defaults to `appsettings.json`; no read-only connection strings or secrets were committed.
+- No frontend, MCP, database schema, migration, provider SDK, project file, CI, or response contract changes were added.
+- `dotnet restore Ecommerce.sln`: passed with NU1900 warnings for unreachable vulnerability feeds.
+- `dotnet build Ecommerce.sln --artifacts-path artifacts\phase3a-build`: passed.
+- `dotnet test Ecommerce.sln --artifacts-path artifacts\phase3a-test`: passed.
+- Catalog unit tests: 83 passed.
+- Auth unit tests: 68 passed.
+- Orders unit tests: 23 passed.
+- Architecture tests: 165 passed.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:
