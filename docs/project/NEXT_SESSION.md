@@ -51,6 +51,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Phase 2A workflow skill wiring into backend Codex/harness instructions and prompt template; documentation-only, no runtime behavior changed
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction; behavior-preserving refactor, no Text-to-SQL strategy change
 - Phase 3B runtime API-layer Catalog assistant sub-agent extraction; behavior-preserving refactor, no broad product search addition
+- Phase 3C Assistant Orchestrator cleanup review; documentation-only, no new runtime sub-agents, no Text-to-SQL changes
 
 ---
 
@@ -115,6 +116,7 @@ All approved projects exist and build successfully:
 - Assistant intent interpretation goes through `IAssistantIntentInterpreter`; disabled-mode production DI resolves `DeterministicAssistantIntentInterpreter` by default.
 - Order-specific assistant CQRS orchestration lives behind API-layer `IOrdersAssistantSubAgent`/`OrdersAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - Catalog-specific assistant CQRS orchestration lives behind API-layer `ICatalogAssistantSubAgent`/`CatalogAssistantSubAgent`; module Application layers remain unaware of assistant agents.
+- Phase 3C confirmed `AssistantOrchestrator` is coordination-focused after Orders/Catalog sub-agent extraction. Do not add Support/Safety sub-agents unless future complexity creates clear value.
 - `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
 - Provider selection is backend configuration only. `Assistant:Llm:Provider` defaults to `OpenAI`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects `GeminiAssistantLlmClient`.
 - Gemini is a POC/testing provider. Configure it with `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, optional `ECOMMERCE_ASSISTANT_GEMINI_MODEL` (default `gemini-2.5-flash`), and optional `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT` (default `https://generativelanguage.googleapis.com/v1beta`).
@@ -352,6 +354,9 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 44. Backend branch workflow rules
 45. AI skills and sub-agent architecture documentation
 46. Phase 2A workflow skill wiring into backend Codex/harness instructions
+47. Phase 3A runtime API-layer Orders assistant sub-agent extraction
+48. Phase 3B runtime API-layer Catalog assistant sub-agent extraction
+49. Phase 3C Assistant Orchestrator cleanup review
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -374,13 +379,13 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 ## Next Approved Task
 
-**There is no currently approved task.**
+**There is no currently approved task after this Phase 3C documentation-only review is committed.**
 
-The last completed work was Phase 2A workflow skill wiring into backend Codex/harness instructions. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Phase 3C Assistant Orchestrator cleanup review. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 The backend branch workflow now requires starting approved execution tasks from latest `main` on a new dedicated branch, with dirty-worktree safety and manual commit/push/PR gates.
 
-Phase 2A was workflow/documentation wiring only. It did not change runtime assistant behavior, Text-to-SQL behavior, MCP behavior, frontend contracts, database schema, CI, project files, or appsettings secrets.
+Phase 3C was documentation-only. It confirmed `AssistantOrchestrator` remains coordination-focused after Orders/Catalog sub-agent extraction and recommended no new Support/Safety runtime sub-agents unless future complexity creates clear value.
 
 **How to Proceed:**
 
