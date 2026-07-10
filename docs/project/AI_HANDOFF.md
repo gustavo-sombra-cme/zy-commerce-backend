@@ -80,6 +80,8 @@ Project-wide AI skills and sub-agent decisions live in `docs/project/AI_SKILLS_S
 
 Phase 3A introduced the first runtime API-layer assistant sub-agent: order-specific assistant CQRS orchestration now lives behind `IOrdersAssistantSubAgent`/`OrdersAssistantSubAgent`. `AssistantOrchestrator` still owns Text-to-SQL first-pass/fallback, intent interpretation, catalog handling, unsupported responses, and response contracts. Text-to-SQL was not moved, converted into a skill, or changed into a selectable strategy in this task.
 
+Phase 3B introduced the API-layer `ICatalogAssistantSubAgent`/`CatalogAssistantSubAgent` for existing catalog assistant CQRS orchestration. `AssistantOrchestrator` still owns Text-to-SQL first-pass/fallback, intent interpretation, order delegation, catalog delegation, unsupported responses, and response contracts. Text-to-SQL and `OrdersAssistantSubAgent` were not changed, and broad product search by text/name/SKU was not added.
+
 Before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes, use `docs/project/CODE_REVIEW.md`. Documentation-only maintenance is excluded from mandatory code review but still requires documentation self-review.
 
 Feature demo slide deliverables are part of the default execution workflow. For main features, major platform capabilities, API modules, integrations, or demo-worthy backend behavior, create or update `docs/demo/features/{feature-slug}-demo-slides.md` with slide-ready Markdown, Mermaid diagrams where useful, demo script, test evidence, risks/tradeoffs, Q&A talking points, and `Speaker cue:` lines. Tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, and documentation-only maintenance do not require slide files unless explicitly requested.
@@ -260,3 +262,4 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - Backend branch workflow rules
 - AI skills and sub-agent architecture documentation
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction
+- Phase 3B runtime API-layer Catalog assistant sub-agent extraction

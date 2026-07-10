@@ -62,6 +62,7 @@
 - AI skills and sub-agent architecture documentation
 - Phase 2A workflow skill wiring into backend Codex/harness instructions
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction
+- Phase 3B runtime API-layer Catalog assistant sub-agent extraction
 
 ## Current Priorities
 
@@ -159,7 +160,7 @@ Not currently started:
 
 ## Assistant Candidates
 
-Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, an API-layer `OrdersAssistantSubAgent` for order-specific CQRS orchestration, and fake provider tests only.
+Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, API-layer `OrdersAssistantSubAgent` and `CatalogAssistantSubAgent` classes for CQRS orchestration, and fake provider tests only.
 
 Runtime assistant sub-agents should remain API-layer classes. Catalog, Orders, and Auth modules should not know about agents, prompts, model planning, Text-to-SQL routing, or provider diagnostics.
 
