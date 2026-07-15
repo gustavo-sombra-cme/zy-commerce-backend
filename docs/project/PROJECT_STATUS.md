@@ -772,6 +772,24 @@ Latest documentation-only execution after Phase 3C Assistant Orchestrator Cleanu
 - No runtime behavior, Text-to-SQL code, frontend, MCP, database schema, migration, appsettings secret, tool allowlist, `AssistantQueryResponse`, `genericTable`, admin/write assistant action, or refusal wording changes were added.
 - Restore, build, and test were intentionally not run because this was documentation-only.
 
+Latest code execution after Assistant Broad Catalog Search:
+
+- Added read-only assistant broad catalog search for natural product discovery questions such as "show me Galaxy products", "find iPhone products", "search for SKU ABC123", "do you have headphones", and "show active products matching laptop".
+- Added `CatalogSearchProducts` as an assistant intent that uses the existing `catalog_search` tool and existing Catalog Application `SearchProductsQuery`.
+- First version searches SKU and Name through existing Catalog search support; description search was not added.
+- Public assistant CQRS catalog search is active-only with `IsActive = true` and returns at most 10 products.
+- `CatalogAssistantSubAgent` handles broad catalog search and returns existing `catalogProducts` structured data through `AssistantCatalogProductsData` and `AssistantProductCardDto`.
+- Text-to-SQL internals, feature flag behavior, planner, validator, executor, and mapper were unchanged.
+- `AssistantQueryResponse`, frontend contracts, MCP, database schema, migrations, appsettings secrets, raw SQL exposure, `genericTable` exposure, and admin/write assistant behavior were unchanged.
+- Added demo slide source `docs/demo/features/assistant-broad-catalog-search-demo-slides.md`.
+- `dotnet restore Ecommerce.sln`: passed with NU1900 warnings for unreachable vulnerability feeds.
+- `dotnet build Ecommerce.sln --artifacts-path artifacts\broad-catalog-search-build`: passed with NU1900 warnings.
+- `dotnet test Ecommerce.sln --artifacts-path artifacts\broad-catalog-search-test`: passed with NU1900 warnings.
+- Catalog unit tests: 83 passed.
+- Auth unit tests: 68 passed.
+- Orders unit tests: 23 passed.
+- Architecture tests: 182 passed.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:

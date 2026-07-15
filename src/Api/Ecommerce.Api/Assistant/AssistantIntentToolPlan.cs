@@ -12,6 +12,7 @@ internal static class AssistantIntentToolPlan
             AssistantIntentKind.OrdersAboveAmount => [AssistantToolNames.OrdersSearch, AssistantToolNames.OrdersAnalyze],
             AssistantIntentKind.OrdersContainingProductsOverAmount => [AssistantToolNames.OrdersSearch, AssistantToolNames.OrdersGetOrder, AssistantToolNames.OrdersAnalyze],
             AssistantIntentKind.ProductFrequency => [AssistantToolNames.OrdersSearch, AssistantToolNames.OrdersGetOrder, AssistantToolNames.OrdersAnalyze],
+            AssistantIntentKind.CatalogSearchProducts => [AssistantToolNames.CatalogSearch],
             AssistantIntentKind.CatalogProductsUnderPrice => [AssistantToolNames.CatalogSearch],
             AssistantIntentKind.CatalogGetProduct => [AssistantToolNames.CatalogGetProduct],
             _ => Array.Empty<string>()

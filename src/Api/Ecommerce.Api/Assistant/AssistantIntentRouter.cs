@@ -23,6 +23,7 @@ public sealed class AssistantIntentRouter
 
     public AssistantIntent Route(string question)
     {
+        var raw = question.Trim();
         var normalized = Normalize(question);
 
         if (string.IsNullOrWhiteSpace(normalized) || safetyPolicy.IsUnsafeQuestion(normalized))
@@ -99,6 +100,13 @@ public sealed class AssistantIntentRouter
             return new AssistantIntent(AssistantIntentKind.CatalogGetProduct, ProductId: parsedProductId);
         }
 
+        if (TryExtractCatalogSearch(raw, normalized, out var catalogSearchText))
+        {
+            return new AssistantIntent(
+                AssistantIntentKind.CatalogSearchProducts,
+                SearchText: catalogSearchText);
+        }
+
         return new AssistantIntent(AssistantIntentKind.Unsupported);
     }
 
@@ -147,6 +155,74 @@ public sealed class AssistantIntentRouter
     {
         var tokens = question.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return tokens.Length == 0 ? string.Empty : tokens[^1].Trim('.', '?', '!', ',', ':', ';', '"', '\'');
+    }
+
+    private static bool TryExtractCatalogSearch(
+        string question,
+        string normalized,
+        out string searchText)
+    {
+        searchText = string.Empty;
+
+        if (!LooksLikeCatalogSearch(normalized))
+        {
+            return false;
+        }
+
+        var candidate = question.Trim(' ', '.', '?', '!', ',', ':', ';', '"', '\'');
+        candidate = RemoveLeadingPhrase(candidate, "show active products matching");
+        candidate = RemoveLeadingPhrase(candidate, "show products matching");
+        candidate = RemoveLeadingPhrase(candidate, "products matching");
+        candidate = RemoveLeadingPhrase(candidate, "product matching");
+        candidate = RemoveLeadingPhrase(candidate, "search for SKU");
+        candidate = RemoveLeadingPhrase(candidate, "search for");
+        candidate = RemoveLeadingPhrase(candidate, "find SKU");
+        candidate = RemoveLeadingPhrase(candidate, "find");
+        candidate = RemoveLeadingPhrase(candidate, "show me");
+        candidate = RemoveLeadingPhrase(candidate, "show active products");
+        candidate = RemoveLeadingPhrase(candidate, "show products");
+        candidate = RemoveLeadingPhrase(candidate, "show");
+        candidate = RemoveLeadingPhrase(candidate, "do you have");
+        candidate = RemoveLeadingPhrase(candidate, "do you carry");
+        candidate = RemoveLeadingPhrase(candidate, "SKU");
+        candidate = RemoveTrailingWord(candidate, "products");
+        candidate = RemoveTrailingWord(candidate, "product");
+
+        searchText = candidate.Trim(' ', '.', '?', '!', ',', ':', ';', '"', '\'');
+        return !string.IsNullOrWhiteSpace(searchText);
+    }
+
+    private static bool LooksLikeCatalogSearch(string normalized) =>
+        normalized.Contains("sku", StringComparison.Ordinal)
+        || normalized.Contains("products matching", StringComparison.Ordinal)
+        || normalized.Contains("product matching", StringComparison.Ordinal)
+        || normalized.StartsWith("search for ", StringComparison.Ordinal)
+        || normalized.StartsWith("do you have ", StringComparison.Ordinal)
+        || normalized.StartsWith("do you carry ", StringComparison.Ordinal)
+        || normalized.StartsWith("show active products matching ", StringComparison.Ordinal)
+        || (normalized.Contains("product", StringComparison.Ordinal)
+            && (normalized.StartsWith("show me ", StringComparison.Ordinal)
+                || normalized.StartsWith("find ", StringComparison.Ordinal)
+                || normalized.StartsWith("show ", StringComparison.Ordinal)));
+
+    private static string RemoveLeadingPhrase(string value, string phrase)
+    {
+        if (!value.StartsWith(phrase, StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        return value[phrase.Length..].Trim();
+    }
+
+    private static string RemoveTrailingWord(string value, string word)
+    {
+        if (!value.EndsWith(word, StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        return value[..^word.Length].Trim();
     }
 
     private static bool HasUnderWord(string question) =>

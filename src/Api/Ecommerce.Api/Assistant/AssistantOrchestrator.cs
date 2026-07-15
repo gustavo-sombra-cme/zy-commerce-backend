@@ -46,6 +46,7 @@ public sealed class AssistantOrchestrator(
                 or AssistantIntentKind.ProductFrequency
                 => await ordersAssistantSubAgent.HandleAsync(intent, buyerId, cancellationToken),
             AssistantIntentKind.CatalogProductsUnderPrice
+                or AssistantIntentKind.CatalogSearchProducts
                 or AssistantIntentKind.CatalogGetProduct
                 => await catalogAssistantSubAgent.HandleAsync(intent, cancellationToken),
             _ => Unsupported()

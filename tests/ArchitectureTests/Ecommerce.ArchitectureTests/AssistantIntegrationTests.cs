@@ -74,6 +74,29 @@ public sealed class AssistantIntegrationTests : IDisposable
         Assert.Equal("4444", intent.SearchText);
     }
 
+    [Theory]
+    [InlineData("show me Galaxy products", "Galaxy")]
+    [InlineData("search for SKU ABC123", "ABC123")]
+    [InlineData("do you have headphones", "headphones")]
+    [InlineData("show active products matching laptop", "laptop")]
+    public void IntentRouter_ShouldRouteCatalogSearchQuestions(string question, string expectedSearchText)
+    {
+        var intent = new AssistantIntentRouter().Route(question);
+
+        Assert.Equal(AssistantIntentKind.CatalogSearchProducts, intent.Kind);
+        Assert.Equal(expectedSearchText, intent.SearchText);
+    }
+
+    [Theory]
+    [InlineData("products under 20", AssistantIntentKind.CatalogProductsUnderPrice)]
+    [InlineData("deactivate product", AssistantIntentKind.Unsupported)]
+    public void IntentRouter_ShouldPreservePriceAndUnsafeRouting(string question, AssistantIntentKind expectedKind)
+    {
+        var intent = new AssistantIntentRouter().Route(question);
+
+        Assert.Equal(expectedKind, intent.Kind);
+    }
+
     [Fact]
     public async Task DeterministicIntentInterpreter_ShouldBeDefaultInterpreterShape()
     {
@@ -1001,6 +1024,43 @@ public sealed class AssistantIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task TextToSqlEnabled_PlannerUnsupported_ShouldFallBackToCatalogSearch()
+    {
+        var productId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query => new CatalogPagedResult(
+                new[]
+                {
+                    new ProductListItemDto(productId, "GAL-1", "Galaxy Case", "Blue case", true, DateTimeOffset.UtcNow)
+                    {
+                        Price = 19.99m
+                    }
+                },
+                query.PageNumber ?? 1,
+                query.PageSize ?? 10,
+                1),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var orchestrator = CreateOrchestrator(
+            sender,
+            textToSqlPlanner: new RecordingTextToSqlPlanner(AssistantTextToSqlPlan.Unsupported()),
+            textToSqlExecutor: new RecordingTextToSqlExecutor(AssistantSqlResult.Failure()),
+            textToSqlEnabled: true);
+
+        var response = await orchestrator.QueryAsync("show me Galaxy products", Guid.NewGuid(), CancellationToken.None);
+
+        var query = Assert.IsType<SearchProductsQuery>(Assert.Single(sender.Requests));
+        Assert.Equal("Galaxy", query.SearchTerm);
+        Assert.True(query.IsActive);
+        Assert.Equal(1, query.PageNumber);
+        Assert.Equal(10, query.PageSize);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
+        Assert.DoesNotContain("genericTable", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SELECT", response.Answer, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task TextToSqlEnabled_ValidatorFailure_ShouldFallBackSafely()
     {
         var buyerId = Guid.NewGuid();
@@ -1234,6 +1294,45 @@ public sealed class AssistantIntegrationTests : IDisposable
         Assert.Equal(buyerId, query.BuyerId);
         Assert.False(response.Unsupported);
         Assert.Contains(AssistantToolNames.OrdersSearch, response.ToolsUsed);
+    }
+
+    [Fact]
+    public async Task FakeInterpreterPlan_ShouldRouteCatalogSearchThroughValidation()
+    {
+        var productId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query => new CatalogPagedResult(
+                new[]
+                {
+                    new ProductListItemDto(productId, "GAL-1", "Galaxy Case", null, true, DateTimeOffset.UtcNow)
+                    {
+                        Price = 19.99m
+                    }
+                },
+                query.PageNumber ?? 1,
+                query.PageSize ?? 10,
+                1),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var interpreter = new StaticPlanInterpreter(new AssistantIntentPlan(
+            AssistantIntentKind.CatalogSearchProducts,
+            [AssistantToolNames.CatalogSearch],
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["searchText"] = "Galaxy"
+            }));
+        var orchestrator = CreateOrchestrator(sender, interpreter);
+
+        var response = await orchestrator.QueryAsync(
+            "Could you find Galaxy items?",
+            Guid.NewGuid(),
+            CancellationToken.None);
+
+        var query = Assert.IsType<SearchProductsQuery>(Assert.Single(sender.Requests));
+        Assert.Equal("Galaxy", query.SearchTerm);
+        Assert.True(query.IsActive);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
     }
 
     [Fact]
@@ -1511,6 +1610,109 @@ public sealed class AssistantIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task CatalogSearchProducts_ShouldDispatchActiveOnlyCatalogSearchAndReturnStructuredData()
+    {
+        var productId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query => new CatalogPagedResult(
+                new[]
+                {
+                    new ProductListItemDto(productId, "GAL-1", "Galaxy Case", "Blue case", true, DateTimeOffset.UtcNow)
+                    {
+                        Price = 19.99m
+                    }
+                },
+                query.PageNumber ?? 1,
+                query.PageSize ?? 10,
+                1),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var orchestrator = CreateOrchestrator(sender);
+
+        var response = await orchestrator.QueryAsync("show me Galaxy products", Guid.NewGuid(), CancellationToken.None);
+
+        var query = Assert.IsType<SearchProductsQuery>(Assert.Single(sender.Requests));
+        Assert.Equal("Galaxy", query.SearchTerm);
+        Assert.True(query.IsActive);
+        Assert.Equal(1, query.PageNumber);
+        Assert.Equal(10, query.PageSize);
+        Assert.Equal("catalog-public", response.DataScope);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
+        Assert.Contains(AssistantToolNames.CatalogSearch, response.ToolsUsed);
+        Assert.Contains("Galaxy Case", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("genericTable", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SELECT", response.Answer, StringComparison.OrdinalIgnoreCase);
+
+        var data = Assert.IsType<AssistantCatalogProductsData>(response.Data);
+        Assert.Null(data.MaxPrice);
+        var product = Assert.Single(data.Products);
+        Assert.Equal(productId, product.ProductId);
+        Assert.Equal("GAL-1", product.Sku);
+        Assert.Equal("Galaxy Case", product.Name);
+        Assert.Equal(19.99m, product.Price);
+        Assert.True(product.IsActive);
+    }
+
+    [Fact]
+    public async Task CatalogSearchProducts_ShouldSupportSkuSearch()
+    {
+        var productId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query => new CatalogPagedResult(
+                new[]
+                {
+                    new ProductListItemDto(productId, "ABC123", "Headphones", null, true, DateTimeOffset.UtcNow)
+                    {
+                        Price = 49.99m
+                    }
+                },
+                query.PageNumber ?? 1,
+                query.PageSize ?? 10,
+                1),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var orchestrator = CreateOrchestrator(sender);
+
+        var response = await orchestrator.QueryAsync("search for SKU ABC123", Guid.NewGuid(), CancellationToken.None);
+
+        var query = Assert.IsType<SearchProductsQuery>(Assert.Single(sender.Requests));
+        Assert.Equal("ABC123", query.SearchTerm);
+        Assert.True(query.IsActive);
+
+        var data = Assert.IsType<AssistantCatalogProductsData>(response.Data);
+        Assert.Equal("ABC123", Assert.Single(data.Products).Sku);
+    }
+
+    [Fact]
+    public async Task CatalogSearchProducts_NoResults_ShouldReturnSupportedEmptyCatalogProducts()
+    {
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query => new CatalogPagedResult(
+                Array.Empty<ProductListItemDto>(),
+                query.PageNumber ?? 1,
+                query.PageSize ?? 10,
+                0),
+            _ => throw new InvalidOperationException($"Unexpected request {request.GetType().Name}.")
+        });
+        var orchestrator = CreateOrchestrator(sender);
+
+        var response = await orchestrator.QueryAsync("do you have headphones", Guid.NewGuid(), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
+        Assert.Contains("did not find active products", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("genericTable", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SELECT", response.Answer, StringComparison.OrdinalIgnoreCase);
+
+        var data = Assert.IsType<AssistantCatalogProductsData>(response.Data);
+        Assert.Empty(data.Products);
+        Assert.Null(data.MaxPrice);
+    }
+
+    [Fact]
     public async Task CatalogGetProduct_ShouldReturnStructuredProductData()
     {
         var productId = Guid.NewGuid();
@@ -1740,6 +1942,46 @@ public sealed class AssistantIntegrationTests : IDisposable
                 new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["amount"] = "-1"
+                })
+        ];
+        yield return
+        [
+            new AssistantIntentPlan(
+                AssistantIntentKind.CatalogSearchProducts,
+                [AssistantToolNames.CatalogSearch],
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["searchText"] = string.Empty
+                })
+        ];
+        yield return
+        [
+            new AssistantIntentPlan(
+                AssistantIntentKind.CatalogSearchProducts,
+                [AssistantToolNames.CatalogSearch],
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["searchText"] = new string('x', 201)
+                })
+        ];
+        yield return
+        [
+            new AssistantIntentPlan(
+                AssistantIntentKind.CatalogSearchProducts,
+                [AssistantToolNames.CatalogSearch],
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["buyerId"] = Guid.NewGuid().ToString()
+                })
+        ];
+        yield return
+        [
+            new AssistantIntentPlan(
+                AssistantIntentKind.CatalogSearchProducts,
+                [AssistantToolNames.CatalogSearch],
+                new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["searchText"] = "show me sql"
                 })
         ];
     }

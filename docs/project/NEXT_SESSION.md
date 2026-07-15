@@ -52,6 +52,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction; behavior-preserving refactor, no Text-to-SQL strategy change
 - Phase 3B runtime API-layer Catalog assistant sub-agent extraction; behavior-preserving refactor, no broad product search addition
 - Phase 3C Assistant Orchestrator cleanup review; documentation-only, no new runtime sub-agents, no Text-to-SQL changes
+- Assistant broad catalog search; read-only product discovery by SKU/name text through existing Catalog Application search, active-only, no Text-to-SQL internal changes
 
 ---
 
@@ -117,6 +118,7 @@ All approved projects exist and build successfully:
 - Order-specific assistant CQRS orchestration lives behind API-layer `IOrdersAssistantSubAgent`/`OrdersAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - Catalog-specific assistant CQRS orchestration lives behind API-layer `ICatalogAssistantSubAgent`/`CatalogAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - Phase 3C confirmed `AssistantOrchestrator` is coordination-focused after Orders/Catalog sub-agent extraction. Do not add Support/Safety sub-agents unless future complexity creates clear value.
+- Broad catalog search is supported through `CatalogSearchProducts`, handled by `CatalogAssistantSubAgent`, and dispatched to existing `SearchProductsQuery` with `IsActive = true`, page `1`, and page size `10`. It searches SKU and Name through existing Catalog support and reuses `catalogProducts` structured data.
 - `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
 - Provider selection is backend configuration only. `Assistant:Llm:Provider` defaults to `OpenAI`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects `GeminiAssistantLlmClient`.
 - Gemini is a POC/testing provider. Configure it with `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, optional `ECOMMERCE_ASSISTANT_GEMINI_MODEL` (default `gemini-2.5-flash`), and optional `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT` (default `https://generativelanguage.googleapis.com/v1beta`).
@@ -160,15 +162,15 @@ All approved projects exist and build successfully:
 
 ### Build & Test Status
 
-Last verified pass (2026-06-19):
+Last verified pass (2026-07-15):
 ```
-dotnet restore Ecommerce.sln               PASSED
-dotnet build Ecommerce.sln                 PASSED
-dotnet test Ecommerce.sln                  PASSED
-  - Catalog Unit Tests: 75 passed
-  - Auth Unit Tests: 65 passed
+dotnet restore Ecommerce.sln                                                   PASSED
+dotnet build Ecommerce.sln --artifacts-path artifacts\broad-catalog-search-build PASSED
+dotnet test Ecommerce.sln --artifacts-path artifacts\broad-catalog-search-test   PASSED
+  - Catalog Unit Tests: 83 passed
+  - Auth Unit Tests: 68 passed
   - Orders Unit Tests: 23 passed
-  - Architecture Tests: 88 passed
+  - Architecture Tests: 182 passed
 ```
 
 ---
@@ -357,6 +359,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 47. Phase 3A runtime API-layer Orders assistant sub-agent extraction
 48. Phase 3B runtime API-layer Catalog assistant sub-agent extraction
 49. Phase 3C Assistant Orchestrator cleanup review
+50. Assistant broad catalog search
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -379,13 +382,13 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 ## Next Approved Task
 
-**There is no currently approved task after this Phase 3C documentation-only review is committed.**
+**There is no currently approved task after Assistant broad catalog search is committed.**
 
-The last completed work was Phase 3C Assistant Orchestrator cleanup review. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Assistant broad catalog search. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
 
 The backend branch workflow now requires starting approved execution tasks from latest `main` on a new dedicated branch, with dirty-worktree safety and manual commit/push/PR gates.
 
-Phase 3C was documentation-only. It confirmed `AssistantOrchestrator` remains coordination-focused after Orders/Catalog sub-agent extraction and recommended no new Support/Safety runtime sub-agents unless future complexity creates clear value.
+Assistant broad catalog search added read-only natural product discovery through the existing Catalog Application search path. It did not change Text-to-SQL internals, frontend contracts, MCP, database schema, migrations, or assistant write/admin behavior.
 
 **How to Proceed:**
 
@@ -669,7 +672,7 @@ dotnet test Ecommerce.sln
 # - Catalog Unit Tests: 83 passed
 # - Auth Unit Tests: 68 passed
 # - Orders Unit Tests: 23 passed
-# - Architecture Tests: 167 passed
+# - Architecture Tests: 182 passed
 ```
 
 If a local API process is running and locks `src/Api/Ecommerce.Api/bin/Debug/net9.0/Ecommerce.Api.dll`, either stop that process intentionally or verify with isolated artifacts:
