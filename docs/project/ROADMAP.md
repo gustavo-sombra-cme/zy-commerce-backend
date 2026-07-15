@@ -65,6 +65,7 @@
 - Phase 3B runtime API-layer Catalog assistant sub-agent extraction
 - Phase 3C Assistant Orchestrator cleanup review
 - Assistant broad catalog search
+- Assistant product detail by natural name or SKU
 
 ## Current Priorities
 
@@ -162,7 +163,7 @@ Not currently started:
 
 ## Assistant Candidates
 
-Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, API-layer `OrdersAssistantSubAgent` and `CatalogAssistantSubAgent` classes for CQRS orchestration, read-only broad catalog search by SKU/name text through existing Catalog Application search, and fake provider tests only.
+Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, API-layer `OrdersAssistantSubAgent` and `CatalogAssistantSubAgent` classes for CQRS orchestration, read-only broad catalog search by SKU/name text, and natural product detail lookup that returns zero/one/multiple-match responses without guessing. These Catalog paths reuse existing Application queries and response contracts, with fake provider tests only.
 
 Runtime assistant sub-agents should remain API-layer classes. Catalog, Orders, and Auth modules should not know about agents, prompts, model planning, Text-to-SQL routing, or provider diagnostics.
 

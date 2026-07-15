@@ -35,6 +35,7 @@ public sealed class AssistantIntentPlanValidator(
             AssistantIntentKind.OrdersAboveAmount => ValidateAmountIntent(plan, AssistantIntentKind.OrdersAboveAmount),
             AssistantIntentKind.OrdersContainingProductsOverAmount => ValidateAmountIntent(plan, AssistantIntentKind.OrdersContainingProductsOverAmount),
             AssistantIntentKind.CatalogSearchProducts => ValidateCatalogSearchProductsIntent(plan),
+            AssistantIntentKind.CatalogGetProductBySearch => ValidateCatalogGetProductBySearchIntent(plan),
             AssistantIntentKind.CatalogProductsUnderPrice => ValidateAmountIntent(plan, AssistantIntentKind.CatalogProductsUnderPrice),
             AssistantIntentKind.OrdersContainingProduct => ValidateProductSearchIntent(plan),
             AssistantIntentKind.CatalogGetProduct => ValidateCatalogGetProductIntent(plan),
@@ -90,6 +91,7 @@ public sealed class AssistantIntentPlanValidator(
                 => string.Equals(argumentName, "searchText", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(argumentName, "productId", StringComparison.OrdinalIgnoreCase),
             AssistantIntentKind.CatalogSearchProducts
+                or AssistantIntentKind.CatalogGetProductBySearch
                 => string.Equals(argumentName, "searchText", StringComparison.OrdinalIgnoreCase),
             AssistantIntentKind.CatalogGetProduct
                 => string.Equals(argumentName, "productId", StringComparison.OrdinalIgnoreCase),
@@ -123,6 +125,17 @@ public sealed class AssistantIntentPlanValidator(
         }
 
         return new AssistantIntent(AssistantIntentKind.CatalogSearchProducts, SearchText: rawSearchText);
+    }
+
+    private AssistantIntent ValidateCatalogGetProductBySearchIntent(AssistantIntentPlan plan)
+    {
+        if (!TryGetArgument(plan, "searchText", out var rawSearchText)
+            || safetyPolicy.IsUnsafeQuestion(rawSearchText))
+        {
+            return Unsupported();
+        }
+
+        return new AssistantIntent(AssistantIntentKind.CatalogGetProductBySearch, SearchText: rawSearchText);
     }
 
     private static AssistantIntent ValidateProductSearchIntent(AssistantIntentPlan plan)

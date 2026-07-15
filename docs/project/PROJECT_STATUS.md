@@ -790,6 +790,25 @@ Latest code execution after Assistant Broad Catalog Search:
 - Orders unit tests: 23 passed.
 - Architecture tests: 182 passed.
 
+Latest code execution after Assistant Product Detail By Search:
+
+- Added read-only `CatalogGetProductBySearch` intent for natural product detail and price questions by name, SKU, or search text.
+- `CatalogAssistantSubAgent` searches with `SearchProductsQuery(searchText, true, 1, 2)` and never guesses between multiple active matches.
+- Zero matches return a supported empty `catalogProducts` response; one active match is resolved through `GetProductByIdQuery` and returns the existing `catalogProduct` response; multiple matches return up to two existing `catalogProducts` choices.
+- Unique detail results are rechecked for active status before exposure. Missing or concurrently inactive details return the supported empty choices response.
+- Existing `AssistantQueryResponse`, structured response DTOs, frontend contracts, Catalog Application queries, tool names, MCP, Orders assistant behavior, database schema, migrations, and packages were unchanged.
+- Text-to-SQL internals, prompts, validator, executor, views, mapper, configuration, and feature flags were unchanged; existing safe fallback can reach the new CQRS path.
+- Write/admin requests remain unsupported, and raw SQL and `genericTable` remain unexposed.
+- Added demo slide source `docs/demo/features/assistant-product-detail-by-search-demo-slides.md`.
+- `dotnet restore Ecommerce.sln`: passed with NU1900 warnings for unreachable vulnerability feeds.
+- `dotnet build Ecommerce.sln --artifacts-path artifacts\product-detail-by-search-build`: passed with NU1900 warnings.
+- `dotnet test Ecommerce.sln --artifacts-path artifacts\product-detail-by-search-test`: passed with NU1900 warnings.
+- Catalog unit tests: 83 passed.
+- Auth unit tests: 68 passed.
+- Orders unit tests: 23 passed.
+- Architecture tests: 209 passed.
+- Manual API verification passed for unique, zero, and multiple matches; broad search and price-filter regressions; inactive exclusion; write/admin refusal; and raw SQL/`genericTable` non-exposure.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:

@@ -100,6 +100,13 @@ public sealed class AssistantIntentRouter
             return new AssistantIntent(AssistantIntentKind.CatalogGetProduct, ProductId: parsedProductId);
         }
 
+        if (TryExtractCatalogDetailSearch(raw, normalized, out var detailSearchText))
+        {
+            return new AssistantIntent(
+                AssistantIntentKind.CatalogGetProductBySearch,
+                SearchText: detailSearchText);
+        }
+
         if (TryExtractCatalogSearch(raw, normalized, out var catalogSearchText))
         {
             return new AssistantIntent(
@@ -187,6 +194,37 @@ public sealed class AssistantIntentRouter
         candidate = RemoveLeadingPhrase(candidate, "SKU");
         candidate = RemoveTrailingWord(candidate, "products");
         candidate = RemoveTrailingWord(candidate, "product");
+
+        searchText = candidate.Trim(' ', '.', '?', '!', ',', ':', ';', '"', '\'');
+        return !string.IsNullOrWhiteSpace(searchText);
+    }
+
+    private static bool TryExtractCatalogDetailSearch(
+        string question,
+        string normalized,
+        out string searchText)
+    {
+        searchText = string.Empty;
+
+        var leadingPhrase = normalized switch
+        {
+            _ when normalized.StartsWith("show me details for ", StringComparison.Ordinal) => "show me details for",
+            _ when normalized.StartsWith("show details for ", StringComparison.Ordinal) => "show details for",
+            _ when normalized.StartsWith("details for ", StringComparison.Ordinal) => "details for",
+            _ when normalized.StartsWith("tell me about ", StringComparison.Ordinal) => "tell me about",
+            _ when normalized.StartsWith("what is the price of ", StringComparison.Ordinal) => "what is the price of",
+            _ when normalized.StartsWith("how much is ", StringComparison.Ordinal) => "how much is",
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrEmpty(leadingPhrase))
+        {
+            return false;
+        }
+
+        var candidate = question.Trim(' ', '.', '?', '!', ',', ':', ';', '"', '\'');
+        candidate = RemoveLeadingPhrase(candidate, leadingPhrase);
+        candidate = RemoveLeadingPhrase(candidate, "SKU");
 
         searchText = candidate.Trim(' ', '.', '?', '!', ',', ':', ';', '"', '\'');
         return !string.IsNullOrWhiteSpace(searchText);

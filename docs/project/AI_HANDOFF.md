@@ -86,6 +86,8 @@ Phase 3C reviewed the post-extraction `AssistantOrchestrator`. It remains the hi
 
 Assistant broad catalog search is implemented as read-only API-layer orchestration. `CatalogSearchProducts` maps natural product discovery questions to `CatalogAssistantSubAgent`, which dispatches the existing Catalog Application `SearchProductsQuery` with `IsActive = true`, page `1`, and page size `10`. The first version searches SKU and Name through existing Catalog search support. It reuses `AssistantResponseTypes.CatalogProducts`, `AssistantCatalogProductsData`, `AssistantProductCardDto`, and `catalog_search`; no frontend contract, Text-to-SQL internal, MCP, schema, migration, raw SQL exposure, `genericTable`, or admin/write assistant behavior changed.
 
+Assistant product detail by search is implemented through `CatalogGetProductBySearch`. Explicit natural detail/price questions first dispatch `SearchProductsQuery(searchText, true, 1, 2)`. Zero matches return supported empty product choices, one active match dispatches `GetProductByIdQuery` and returns the existing `catalogProduct` contract, and multiple matches return at most two `catalogProducts` choices without guessing. Detail output is rechecked for active status. The intent uses only the existing `catalog_search` and `catalog_get_product` tools; Text-to-SQL internals, Orders behavior, frontend/MCP contracts, schema, migrations, and assistant write/admin behavior remain unchanged.
+
 Before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes, use `docs/project/CODE_REVIEW.md`. Documentation-only maintenance is excluded from mandatory code review but still requires documentation self-review.
 
 Feature demo slide deliverables are part of the default execution workflow. For main features, major platform capabilities, API modules, integrations, or demo-worthy backend behavior, create or update `docs/demo/features/{feature-slug}-demo-slides.md` with slide-ready Markdown, Mermaid diagrams where useful, demo script, test evidence, risks/tradeoffs, Q&A talking points, and `Speaker cue:` lines. Tiny fixes, typo fixes, internal refactors with no demo value, prompt-template-only cleanup, test-only cleanup, and documentation-only maintenance do not require slide files unless explicitly requested.
@@ -269,3 +271,4 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - Phase 3B runtime API-layer Catalog assistant sub-agent extraction
 - Phase 3C Assistant Orchestrator cleanup review
 - Assistant broad catalog search
+- Assistant product detail by natural name or SKU
