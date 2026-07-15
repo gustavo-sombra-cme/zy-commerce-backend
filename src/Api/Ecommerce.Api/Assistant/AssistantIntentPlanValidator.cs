@@ -34,6 +34,7 @@ public sealed class AssistantIntentPlanValidator(
             AssistantIntentKind.ProductFrequency => new AssistantIntent(AssistantIntentKind.ProductFrequency),
             AssistantIntentKind.OrdersAboveAmount => ValidateAmountIntent(plan, AssistantIntentKind.OrdersAboveAmount),
             AssistantIntentKind.OrdersContainingProductsOverAmount => ValidateAmountIntent(plan, AssistantIntentKind.OrdersContainingProductsOverAmount),
+            AssistantIntentKind.CatalogSearchProducts => ValidateCatalogSearchProductsIntent(plan),
             AssistantIntentKind.CatalogProductsUnderPrice => ValidateAmountIntent(plan, AssistantIntentKind.CatalogProductsUnderPrice),
             AssistantIntentKind.OrdersContainingProduct => ValidateProductSearchIntent(plan),
             AssistantIntentKind.CatalogGetProduct => ValidateCatalogGetProductIntent(plan),
@@ -88,6 +89,8 @@ public sealed class AssistantIntentPlanValidator(
             AssistantIntentKind.OrdersContainingProduct
                 => string.Equals(argumentName, "searchText", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(argumentName, "productId", StringComparison.OrdinalIgnoreCase),
+            AssistantIntentKind.CatalogSearchProducts
+                => string.Equals(argumentName, "searchText", StringComparison.OrdinalIgnoreCase),
             AssistantIntentKind.CatalogGetProduct
                 => string.Equals(argumentName, "productId", StringComparison.OrdinalIgnoreCase),
             _ => false
@@ -109,6 +112,17 @@ public sealed class AssistantIntentPlanValidator(
         }
 
         return new AssistantIntent(kind, Amount: amount);
+    }
+
+    private AssistantIntent ValidateCatalogSearchProductsIntent(AssistantIntentPlan plan)
+    {
+        if (!TryGetArgument(plan, "searchText", out var rawSearchText)
+            || safetyPolicy.IsUnsafeQuestion(rawSearchText))
+        {
+            return Unsupported();
+        }
+
+        return new AssistantIntent(AssistantIntentKind.CatalogSearchProducts, SearchText: rawSearchText);
     }
 
     private static AssistantIntent ValidateProductSearchIntent(AssistantIntentPlan plan)

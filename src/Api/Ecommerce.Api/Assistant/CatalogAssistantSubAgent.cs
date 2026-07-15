@@ -15,10 +15,50 @@ public sealed class CatalogAssistantSubAgent(ISender sender) : ICatalogAssistant
         CancellationToken cancellationToken) =>
         intent.Kind switch
         {
+            AssistantIntentKind.CatalogSearchProducts => await CatalogSearchProductsAsync(intent.SearchText, cancellationToken),
             AssistantIntentKind.CatalogProductsUnderPrice => await CatalogProductsUnderPriceAsync(intent.Amount ?? 0, cancellationToken),
             AssistantIntentKind.CatalogGetProduct => await CatalogGetProductAsync(intent.ProductId, cancellationToken),
             _ => throw new InvalidOperationException($"Intent kind {intent.Kind} is not handled by the catalog assistant sub-agent.")
         };
+
+    private async Task<AssistantQueryResponse> CatalogSearchProductsAsync(
+        string? searchText,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return Unsupported();
+        }
+
+        var normalizedSearchText = searchText.Trim();
+        var products = await sender.Send(
+            new SearchProductsQuery(normalizedSearchText, true, AnalysisPageNumber, 10),
+            cancellationToken);
+        var matches = products.Items.Take(10).ToArray();
+
+        if (matches.Length == 0)
+        {
+            return new AssistantQueryResponse(
+                $"I did not find active products matching \"{normalizedSearchText}\".",
+                [AssistantToolNames.CatalogSearch],
+                "catalog-public",
+                false,
+                AssistantResponseTypes.CatalogProducts,
+                new AssistantCatalogProductsData(Array.Empty<AssistantProductCardDto>(), null));
+        }
+
+        var matchLines = matches
+            .Select(product => $"{product.Name} ({product.Sku}) {Money(product.Price)}")
+            .ToArray();
+
+        return new AssistantQueryResponse(
+            $"Matching active products for \"{normalizedSearchText}\": {string.Join("; ", matchLines)}.",
+            [AssistantToolNames.CatalogSearch],
+            "catalog-public",
+            false,
+            AssistantResponseTypes.CatalogProducts,
+            new AssistantCatalogProductsData(matches.Select(ToProductCard).ToArray(), null));
+    }
 
     private async Task<AssistantQueryResponse> CatalogProductsUnderPriceAsync(
         decimal amount,
