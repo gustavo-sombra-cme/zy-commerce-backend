@@ -760,6 +760,18 @@ Latest code execution after Phase 3B Runtime Catalog Assistant Sub-Agent:
 - Orders unit tests: 23 passed.
 - Architecture tests: 167 passed.
 
+Latest documentation-only execution after Phase 3C Assistant Orchestrator Cleanup Review:
+
+- Reviewed `AssistantOrchestrator` after Phase 3A Orders and Phase 3B Catalog runtime API-layer sub-agent extraction.
+- Confirmed `AssistantOrchestrator` is now coordination-focused: top-level query flow, Text-to-SQL first-pass/fallback, intent interpretation, validation, diagnostics, sub-agent delegation, and final unsupported fallback.
+- Confirmed Orders-specific CQRS assistant orchestration lives in `OrdersAssistantSubAgent`.
+- Confirmed Catalog-specific CQRS assistant orchestration lives in `CatalogAssistantSubAgent`.
+- Recommended not adding `SupportAssistantSubAgent` or `SafetyAssistantSubAgent` now.
+- Text-to-SQL remains unchanged inside `AssistantOrchestrator`.
+- Future work should focus on real assistant capabilities, not premature abstraction; future selectable Text-to-SQL strategy/telemetry should be planned separately if needed.
+- No runtime behavior, Text-to-SQL code, frontend, MCP, database schema, migration, appsettings secret, tool allowlist, `AssistantQueryResponse`, `genericTable`, admin/write assistant action, or refusal wording changes were added.
+- Restore, build, and test were intentionally not run because this was documentation-only.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:
