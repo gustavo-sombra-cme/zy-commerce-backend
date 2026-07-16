@@ -51,7 +51,7 @@ Speaker cue: A live model provider needs available quota; scripted-model tests d
 
 ## Slide 5 — Verification Evidence
 
-- Solution tests: 382 passed after rebasing onto the prerequisite merge.
+- Solution tests: 385 passed after rebasing onto the prerequisite merge.
 - Focused autonomous-agent coverage includes multi-step search/detail, fabricated IDs, inactive rows, malformed/unknown tools, prompt injection, limits, cancellation, grounding, provider payloads, and database-filter ordering.
 - Formatting verification: zero files required changes.
 - Local readiness: HTTP 200 `Healthy` after applying existing migrations.

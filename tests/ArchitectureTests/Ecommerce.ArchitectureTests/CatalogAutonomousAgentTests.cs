@@ -123,6 +123,70 @@ public sealed class CatalogAutonomousAgentTests
     }
 
     [Fact]
+    public async Task RunAsync_ProductDetailSearchWithNoMatches_ShouldReturnSupportedEmptyChoices()
+    {
+        var sender = new RecordingSender(_ => SearchResult());
+        var model = new ScriptedModel(
+            ToolCall("search", SearchCatalogProductsTool.ToolName, new { searchText = "missing" }),
+            Complete(CatalogAgentFinalResponseType.CatalogProducts));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("show me details for missing"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
+        Assert.Equal(AssistantDataScopes.CatalogPublic, response.DataScope);
+        Assert.Equal(SearchCatalogProductsTool.ToolName, Assert.Single(response.ToolsUsed));
+        Assert.Empty(Assert.IsType<AssistantCatalogProductsData>(response.Data).Products);
+    }
+
+    [Fact]
+    public async Task RunAsync_AmbiguousProductDetailSearch_ShouldReturnChoicesWithoutDetailLookup()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var sender = new RecordingSender(_ => SearchResult(
+            Product(firstId, "PHONE-1", "Phone One", 500m),
+            Product(secondId, "PHONE-2", "Phone Two", 600m)));
+        var model = new ScriptedModel(
+            ToolCall("search", SearchCatalogProductsTool.ToolName, new { searchText = "phone" }),
+            CompleteWithClarification(firstId, secondId));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("show me details for phone"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
+        Assert.Equal(2, Assert.IsType<AssistantCatalogProductsData>(response.Data).Products.Count);
+        Assert.Single(sender.Requests);
+        Assert.Contains("choose", response.Answer, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RunAsync_InactiveDetailResult_ShouldFailWithoutExposingTheProduct()
+    {
+        var productId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery => SearchResult(Product(productId, "PHONE-1", "Phone", 699m)),
+            GetProductByIdQuery => Details(productId, false),
+            _ => throw new InvalidOperationException("Unexpected query.")
+        });
+        var model = new ScriptedModel(
+            ToolCall("search", SearchCatalogProductsTool.ToolName, new { searchText = "phone" }),
+            ToolCall("detail", GetCatalogProductTool.ToolName, new { productId }),
+            Complete(CatalogAgentFinalResponseType.CatalogProduct, productId));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("show me details for phone"), CancellationToken.None);
+
+        Assert.True(response.Unsupported);
+        Assert.Null(response.Data);
+        Assert.Contains(SearchCatalogProductsTool.ToolName, response.ToolsUsed);
+        Assert.DoesNotContain(GetCatalogProductTool.ToolName, response.ToolsUsed);
+    }
+
+    [Fact]
     public async Task SearchTool_ShouldApplyActiveOnlyAndMaximumPriceInTheQuery()
     {
         SearchProductsQuery? captured = null;
@@ -385,6 +449,18 @@ public sealed class CatalogAutonomousAgentTests
             Array.Empty<AssistantToolCall>(),
             AssistantModelFinishReason.Completed,
             new CatalogAgentFinalAnswer("Model wording is not authoritative.", responseType, selectedIds, null, false));
+
+    private static AssistantModelResponse CompleteWithClarification(params Guid[] selectedIds) =>
+        new(
+            null,
+            Array.Empty<AssistantToolCall>(),
+            AssistantModelFinishReason.Completed,
+            new CatalogAgentFinalAnswer(
+                "Choose a product.",
+                CatalogAgentFinalResponseType.CatalogProducts,
+                selectedIds,
+                null,
+                true));
 
     private sealed class ScriptedModel(params AssistantModelResponse[] responses) : IAssistantLanguageModel
     {
