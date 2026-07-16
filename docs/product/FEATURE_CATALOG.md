@@ -44,7 +44,7 @@ References: `src/Api/Ecommerce.Api/Controllers/Orders/OrdersController.cs`, `src
 - Structured request/error/auth/health logging.
 - Swagger/OpenAPI in Development.
 - Protected MCP endpoint `/mcp`.
-- Protected deterministic assistant endpoint `POST /api/assistant/query` with read-only Catalog/Orders capability orchestration.
+- Protected assistant endpoint `POST /api/assistant/query` with deterministic Orders orchestration and a bounded autonomous read-only Catalog tool loop.
 
 References: `src/Api/Ecommerce.Api/Program.cs`, `src/Api/Ecommerce.Api/HealthChecks`, `src/Api/Ecommerce.Api/Middleware`, `src/Api/Ecommerce.Api/Mcp`, `src/Api/Ecommerce.Api/Assistant`, `src/Api/Ecommerce.Api/Controllers/Assistant`.
 
@@ -83,7 +83,7 @@ References: `../zy-commerce-frontend/src/app/features/catalog`, `../zy-commerce-
 ## Planned
 
 - Frontend integration with backend assistant endpoint.
-- External LLM provider integration behind the existing backend assistant safety boundary.
+- Production hardening and operational evaluation of configured external LLM providers.
 - Orders Catalog validation/integration.
 - Auth refresh token strategy.
 - Additional MCP policies/rate limiting.

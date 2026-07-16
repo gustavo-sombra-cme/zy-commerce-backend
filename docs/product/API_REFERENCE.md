@@ -252,13 +252,16 @@ Notes:
 - Existing clients can ignore `responseType` and `data`; the fields are additive and do not replace `answer`.
 - Supported structured response types: `recentOrders`, `orderSummaryAnalytics`, `orderedProducts`, `matchingOrders`, `productFrequency`, `catalogProducts`, `catalogProduct`.
 - Internal read-only capability allowlist: `catalog_search`, `catalog_get_product`, `orders_search`, `orders_get_order`, `orders_analyze`.
+- Delegated Catalog goals use a separate bounded allowlist: `catalog_search_products` and `catalog_get_product`. These tools are selected by a provider-neutral model loop but validated and executed by server code only.
+- Catalog agent searches return active public products only. Detail IDs must have been returned by a successful Catalog search earlier in the same request execution.
+- Catalog agent runtime limits cover iterations, calls per iteration, conversation messages, and page size under `Assistant:CatalogAgent`; enabling it requires a complete configured assistant LLM provider.
 - Orders analysis is scoped to the authenticated JWT `sub` claim.
 - Does not accept `userId` or `buyerId` from the request body.
 - Mutating, admin, SQL, token, database, internal, unclear, and cross-user requests return a safe unsupported response with `unsupported=true`, `dataScope="none"`, empty `toolsUsed`, `responseType=null`, and `data=null`.
 - The assistant can use deterministic interpretation, the existing OpenAI-style provider, or Gemini as a POC/testing provider through backend configuration only; the HTTP request/response contract does not change.
 - Gemini configuration uses `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini`, `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, `ECOMMERCE_ASSISTANT_GEMINI_MODEL`, and `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT`. API keys must come from environment variables, user secrets, or another non-committed configuration provider.
 - Gemini free-tier and rate-limit behavior depends on the Google account/project. A ChatGPT/OpenAI subscription is unrelated to Gemini Developer API access.
-- Provider failures, rate limits, timeouts, malformed provider JSON, and invalid intent-plan JSON fall back safely to deterministic behavior where possible.
+- Provider failures, rate limits, timeouts, malformed provider JSON, and invalid model output fail safely. Non-Catalog intent interpretation retains its existing deterministic fallback where applicable.
 - The assistant does not log prompts, raw provider responses, API keys, JWTs, auth headers, or sensitive payloads.
 
 ### GET /health/live

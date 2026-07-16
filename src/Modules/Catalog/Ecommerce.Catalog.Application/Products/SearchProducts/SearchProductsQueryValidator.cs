@@ -16,5 +16,9 @@ public sealed class SearchProductsQueryValidator : AbstractValidator<SearchProdu
             .GreaterThanOrEqualTo(1)
             .LessThanOrEqualTo(MaxPageSize)
             .When(query => query.PageSize.HasValue);
+
+        RuleFor(query => query.MaximumPrice)
+            .GreaterThanOrEqualTo(0)
+            .When(query => query.MaximumPrice.HasValue);
     }
 }

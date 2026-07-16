@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-Date: 2026-06-25
+Date: 2026-07-16
 
 The repository is a .NET 9 ASP.NET Core backend for an enterprise e-commerce system. It follows Clean Architecture First, Modular Monolith, Module Isolation, CQRS, and thin controller rules.
 
@@ -75,6 +75,11 @@ Catalog uses:
 - Manual EF Core migration: `InitialCatalogSchema`
 - Manual EF Core migration: `AddProductPrice`
 - Query-side read model for product search
+- Optional strict maximum-price filtering (`Price < MaximumPrice`) applied before count and pagination
+
+### Bounded Autonomous Catalog Assistant
+
+The API-layer Catalog assistant now delegates safe public catalog goals to a bounded provider-neutral model/tool loop. The loop can select only `catalog_search_products` and `catalog_get_product`; both dispatch existing Catalog Application queries through MediatR. Search is active-only, detail identifiers must originate from a successful search in the same execution, final DTOs are rebuilt from trusted tool results, and iterations/tool calls/messages/page sizes have server-enforced limits. No write command, raw SQL, repository, DbContext, MCP tool, or arbitrary method is exposed to the model. See ADR-007.
 
 ### Auth
 

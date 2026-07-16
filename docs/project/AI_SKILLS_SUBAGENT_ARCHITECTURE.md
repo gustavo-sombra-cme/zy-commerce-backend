@@ -68,6 +68,8 @@ Push must remain explicitly human-approved. Both of these approval phrases are v
 
 Runtime assistant sub-agents should remain API-layer classes. They may coordinate assistant-facing use cases such as Catalog product discovery, Orders history analysis, safety validation, and unsupported request handling.
 
+The Catalog runtime sub-agent is a bounded autonomous exception to deterministic sequencing, governed by ADR-007. Its model may propose calls only to the Catalog-specific registry (`catalog_search_products`, `catalog_get_product`). Server code validates every argument, enforces public active-only scope and hard limits, records trusted product identifiers per execution, and reconstructs final product contracts from CQRS results. Product text and model output are untrusted. This pattern does not authorize autonomy in Orders, Auth, Text-to-SQL, MCP, or write workflows.
+
 They must dispatch real business reads through existing Application/CQRS handlers, usually through `ISender`.
 
 They must not call EF Core DbContexts, repositories, Domain objects, module internals, write commands, MCP protocol types, raw SQL paths, or provider clients directly unless an explicitly approved architecture change says otherwise.

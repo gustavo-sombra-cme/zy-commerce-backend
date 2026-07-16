@@ -10,6 +10,7 @@ public enum AssistantIntentKind
     OrdersAboveAmount,
     OrdersContainingProductsOverAmount,
     ProductFrequency,
+    CatalogGoal,
     CatalogSearchProducts,
     CatalogGetProductBySearch,
     CatalogProductsUnderPrice,

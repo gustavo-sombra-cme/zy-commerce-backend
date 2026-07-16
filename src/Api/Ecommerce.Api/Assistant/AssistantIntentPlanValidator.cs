@@ -32,6 +32,7 @@ public sealed class AssistantIntentPlanValidator(
             AssistantIntentKind.TotalSpend => new AssistantIntent(AssistantIntentKind.TotalSpend),
             AssistantIntentKind.ProductsOrdered => new AssistantIntent(AssistantIntentKind.ProductsOrdered),
             AssistantIntentKind.ProductFrequency => new AssistantIntent(AssistantIntentKind.ProductFrequency),
+            AssistantIntentKind.CatalogGoal => new AssistantIntent(AssistantIntentKind.CatalogGoal),
             AssistantIntentKind.OrdersAboveAmount => ValidateAmountIntent(plan, AssistantIntentKind.OrdersAboveAmount),
             AssistantIntentKind.OrdersContainingProductsOverAmount => ValidateAmountIntent(plan, AssistantIntentKind.OrdersContainingProductsOverAmount),
             AssistantIntentKind.CatalogSearchProducts => ValidateCatalogSearchProductsIntent(plan),

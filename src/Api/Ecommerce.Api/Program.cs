@@ -55,6 +55,8 @@ builder.Services.Configure<AssistantLlmOptions>(
     builder.Configuration.GetSection(AssistantLlmOptions.SectionName));
 builder.Services.Configure<AssistantTextToSqlOptions>(
     builder.Configuration.GetSection(AssistantTextToSqlOptions.SectionName));
+builder.Services.Configure<CatalogAgentOptions>(
+    builder.Configuration.GetSection(CatalogAgentOptions.SectionName));
 builder.Services.AddScoped<AssistantOrchestrator>();
 builder.Services.AddScoped<IOrdersAssistantSubAgent, OrdersAssistantSubAgent>();
 builder.Services.AddScoped<ICatalogAssistantSubAgent, CatalogAssistantSubAgent>();
@@ -62,6 +64,7 @@ builder.Services.AddSingleton<AssistantSafetyPolicy>();
 builder.Services.AddSingleton<AssistantIntentRouter>();
 builder.Services.AddSingleton<AssistantIntentPlanValidator>();
 builder.Services.AddSingleton<AssistantIntentPlanJsonParser>();
+builder.Services.AddSingleton<AssistantModelResponseJsonParser>();
 builder.Services.AddSingleton<DeterministicAssistantIntentInterpreter>();
 builder.Services.AddHttpClient<HttpAssistantLlmClient>();
 builder.Services.AddHttpClient<GeminiAssistantLlmClient>();
@@ -72,6 +75,10 @@ builder.Services.AddScoped<IAssistantLlmClient>(services =>
         ? services.GetRequiredService<GeminiAssistantLlmClient>()
         : services.GetRequiredService<HttpAssistantLlmClient>();
 });
+builder.Services.AddScoped<IAssistantLanguageModel, ProviderAssistantLanguageModel>();
+builder.Services.AddScoped<ICatalogAgentTool, SearchCatalogProductsTool>();
+builder.Services.AddScoped<ICatalogAgentTool, GetCatalogProductTool>();
+builder.Services.AddScoped<ICatalogAgentToolRegistry, CatalogAgentToolRegistry>();
 builder.Services.AddScoped<LlmAssistantIntentInterpreter>();
 builder.Services.AddScoped<IAssistantIntentInterpreter>(services =>
 {
@@ -88,6 +95,22 @@ builder.Services.AddSingleton<AssistantTextToSqlPromptBuilder>();
 builder.Services.AddSingleton<AssistantTextToSqlPlanParser>();
 builder.Services.AddSingleton<AssistantTextToSqlResponseMapper>();
 builder.Services.AddScoped<IAssistantTextToSqlPlanner, LlmAssistantTextToSqlPlanner>();
+
+var catalogAgentOptions = builder.Configuration
+    .GetSection(CatalogAgentOptions.SectionName)
+    .Get<CatalogAgentOptions>() ?? new CatalogAgentOptions();
+var configuredLlmOptions = builder.Configuration
+    .GetSection(AssistantLlmOptions.SectionName)
+    .Get<AssistantLlmOptions>() ?? new AssistantLlmOptions();
+if (catalogAgentOptions.Enabled
+    && (!configuredLlmOptions.Enabled
+        || string.IsNullOrWhiteSpace(configuredLlmOptions.ResolvedEndpoint)
+        || string.IsNullOrWhiteSpace(configuredLlmOptions.ResolvedModel)
+        || !configuredLlmOptions.TryResolveApiKey(out _)))
+{
+    throw new InvalidOperationException(
+        "Assistant:CatalogAgent is enabled but the configured assistant LLM provider is incomplete.");
+}
 
 builder.Services.AddSwaggerGen(options =>
 {

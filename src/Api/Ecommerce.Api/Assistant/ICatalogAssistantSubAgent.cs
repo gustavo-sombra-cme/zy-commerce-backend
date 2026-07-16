@@ -2,7 +2,7 @@ namespace Ecommerce.Api.Assistant;
 
 public interface ICatalogAssistantSubAgent
 {
-    Task<AssistantQueryResponse> HandleAsync(
-        AssistantIntent intent,
+    Task<AssistantQueryResponse> RunAsync(
+        CatalogAgentRequest request,
         CancellationToken cancellationToken);
 }

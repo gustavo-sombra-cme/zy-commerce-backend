@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-07-10
+**Last Updated:** 2026-07-16
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -54,6 +54,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Phase 3C Assistant Orchestrator cleanup review; documentation-only, no new runtime sub-agents, no Text-to-SQL changes
 - Assistant broad catalog search; read-only product discovery by SKU/name text through existing Catalog Application search, active-only, no Text-to-SQL internal changes
 - Assistant product detail by natural name or SKU; zero matches return supported empty choices, unique active matches return existing `catalogProduct` detail, and multiple matches return choices without guessing
+- Bounded autonomous Catalog assistant; provider-neutral goal/tool loop, two allowlisted read tools, trusted per-execution identifiers, grounded structured responses, hard runtime limits, and database-backed maximum-price filtering
 
 ---
 

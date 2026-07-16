@@ -52,7 +52,24 @@ public sealed class SearchProductsQueryValidatorTests
     [Fact]
     public void Validate_WithValidSearchAndFilter_Succeeds()
     {
-        var result = _validator.Validate(new SearchProductsQuery("SKU", true, 1, 20));
+        var result = _validator.Validate(new SearchProductsQuery("SKU", true, 1, 20, 1000m));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_WithNegativeMaximumPrice_Fails()
+    {
+        var result = _validator.Validate(new SearchProductsQuery(null, true, 1, 20, -0.01m));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(SearchProductsQuery.MaximumPrice));
+    }
+
+    [Fact]
+    public void Validate_WithZeroMaximumPrice_Succeeds()
+    {
+        var result = _validator.Validate(new SearchProductsQuery(null, true, 1, 20, 0m));
 
         Assert.True(result.IsValid);
     }
