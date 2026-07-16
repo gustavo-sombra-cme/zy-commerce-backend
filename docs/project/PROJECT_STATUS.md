@@ -81,6 +81,8 @@ Catalog uses:
 
 The API-layer Catalog assistant now delegates safe public catalog goals to a bounded provider-neutral model/tool loop. The loop can select only `catalog_search_products` and `catalog_get_product`; both dispatch existing Catalog Application queries through MediatR. Search is active-only, detail identifiers must originate from a successful search in the same execution, final DTOs are rebuilt from trusted tool results, and iterations/tool calls/messages/page sizes have server-enforced limits. No write command, raw SQL, repository, DbContext, MCP tool, or arbitrary method is exposed to the model. See ADR-007.
 
+Demo source: `docs/demo/features/bounded-autonomous-catalog-agent-demo-slides.md`.
+
 ### Auth
 
 Auth has Register User, Login User, JWT access token generation, JWT bearer validation, Admin/Customer role support, and a protected Current User endpoint implemented through Domain, Application, Infrastructure, Contracts, and API. Login verifies credentials and returns user identity plus a short-lived JWT access token that includes a `role` claim.
