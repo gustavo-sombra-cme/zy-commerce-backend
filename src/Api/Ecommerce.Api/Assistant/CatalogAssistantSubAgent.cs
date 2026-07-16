@@ -9,6 +9,7 @@ public sealed class CatalogAssistantSubAgent(ISender sender) : ICatalogAssistant
 {
     private const int AnalysisPageNumber = 1;
     private const int AnalysisPageSize = 100;
+    private const int DetailSearchPageSize = 2;
 
     public async Task<AssistantQueryResponse> HandleAsync(
         AssistantIntent intent,
@@ -16,6 +17,7 @@ public sealed class CatalogAssistantSubAgent(ISender sender) : ICatalogAssistant
         intent.Kind switch
         {
             AssistantIntentKind.CatalogSearchProducts => await CatalogSearchProductsAsync(intent.SearchText, cancellationToken),
+            AssistantIntentKind.CatalogGetProductBySearch => await CatalogGetProductBySearchAsync(intent.SearchText, cancellationToken),
             AssistantIntentKind.CatalogProductsUnderPrice => await CatalogProductsUnderPriceAsync(intent.Amount ?? 0, cancellationToken),
             AssistantIntentKind.CatalogGetProduct => await CatalogGetProductAsync(intent.ProductId, cancellationToken),
             _ => throw new InvalidOperationException($"Intent kind {intent.Kind} is not handled by the catalog assistant sub-agent.")
@@ -58,6 +60,61 @@ public sealed class CatalogAssistantSubAgent(ISender sender) : ICatalogAssistant
             false,
             AssistantResponseTypes.CatalogProducts,
             new AssistantCatalogProductsData(matches.Select(ToProductCard).ToArray(), null));
+    }
+
+    private async Task<AssistantQueryResponse> CatalogGetProductBySearchAsync(
+        string? searchText,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return Unsupported();
+        }
+
+        var normalizedSearchText = searchText.Trim();
+        var products = await sender.Send(
+            new SearchProductsQuery(normalizedSearchText, true, AnalysisPageNumber, DetailSearchPageSize),
+            cancellationToken);
+        var matches = products.Items.Take(DetailSearchPageSize).ToArray();
+
+        if (matches.Length == 0)
+        {
+            return ProductSearchNotFound(normalizedSearchText, [AssistantToolNames.CatalogSearch]);
+        }
+
+        if (matches.Length > 1)
+        {
+            var matchLines = matches
+                .Select(product => $"{product.Name} ({product.Sku}) {Money(product.Price)}")
+                .ToArray();
+
+            return new AssistantQueryResponse(
+                $"I found multiple active products matching \"{normalizedSearchText}\": {string.Join("; ", matchLines)}. Please choose an exact SKU or product name.",
+                [AssistantToolNames.CatalogSearch],
+                "catalog-public",
+                false,
+                AssistantResponseTypes.CatalogProducts,
+                new AssistantCatalogProductsData(matches.Select(ToProductCard).ToArray(), null));
+        }
+
+        var product = await sender.Send(
+            new GetProductByIdQuery(matches[0].ProductId),
+            cancellationToken);
+
+        if (product is null || !product.IsActive)
+        {
+            return ProductSearchNotFound(
+                normalizedSearchText,
+                [AssistantToolNames.CatalogSearch, AssistantToolNames.CatalogGetProduct]);
+        }
+
+        return new AssistantQueryResponse(
+            $"{product.Name} ({product.Sku}) costs {Money(product.Price)} and is active.",
+            [AssistantToolNames.CatalogSearch, AssistantToolNames.CatalogGetProduct],
+            "catalog-public",
+            false,
+            AssistantResponseTypes.CatalogProduct,
+            new AssistantCatalogProductData(ToProductCard(product)));
     }
 
     private async Task<AssistantQueryResponse> CatalogProductsUnderPriceAsync(
@@ -128,6 +185,17 @@ public sealed class CatalogAssistantSubAgent(ISender sender) : ICatalogAssistant
             Array.Empty<string>(),
             "none",
             true);
+
+    private static AssistantQueryResponse ProductSearchNotFound(
+        string searchText,
+        IReadOnlyCollection<string> toolsUsed) =>
+        new(
+            $"I did not find one active product matching \"{searchText}\".",
+            toolsUsed,
+            "catalog-public",
+            false,
+            AssistantResponseTypes.CatalogProducts,
+            new AssistantCatalogProductsData(Array.Empty<AssistantProductCardDto>(), null));
 
     private static AssistantProductCardDto ToProductCard(ProductListItemDto product) =>
         new(
