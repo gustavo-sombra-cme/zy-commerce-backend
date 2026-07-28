@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Memory Update"
+  short_description: "Keep repository project memory factual and current"
+  default_prompt: "Use $project-memory-update to align project memory with this verified completed task."

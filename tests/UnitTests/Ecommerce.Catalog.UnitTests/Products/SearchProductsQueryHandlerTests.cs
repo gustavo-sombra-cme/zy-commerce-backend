@@ -46,6 +46,21 @@ public sealed class SearchProductsQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithMaximumPrice_ForwardsDatabaseFilter()
+    {
+        var repository = new FakeProductReadRepository();
+        var handler = new SearchProductsQueryHandler(repository);
+
+        await handler.Handle(new SearchProductsQuery(" laptop ", true, 3, 10, 1500m), CancellationToken.None);
+
+        Assert.Equal("laptop", repository.LastQuery?.SearchTerm);
+        Assert.True(repository.LastQuery?.IsActive);
+        Assert.Equal(1500m, repository.LastQuery?.MaximumPrice);
+        Assert.Equal(3, repository.LastQuery?.PageNumber);
+        Assert.Equal(10, repository.LastQuery?.PageSize);
+    }
+
+    [Fact]
     public async Task Handle_ReturnsRepositoryResult()
     {
         var expected = new PagedResult<ProductListItemDto>(

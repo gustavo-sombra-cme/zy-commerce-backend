@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Decision Check"
+  short_description: "Decide whether work needs a new or updated ADR"
+  default_prompt: "Use $architecture-decision-check to decide whether this proposed change requires a new or updated ADR."

@@ -61,6 +61,7 @@ Last updated: 2026-06-19
 
 - Architecture tests: `tests/ArchitectureTests/Ecommerce.ArchitectureTests`
 - Assistant architecture/integration tests: `tests/ArchitectureTests/Ecommerce.ArchitectureTests/AssistantIntegrationTests.cs`
+- Bounded Catalog agent tests: `tests/ArchitectureTests/Ecommerce.ArchitectureTests/CatalogAutonomousAgentTests.cs`
 - Assistant authorization tests: `tests/ArchitectureTests/Ecommerce.ArchitectureTests/ApiAuthorizationTests.cs`
 - Catalog unit tests: `tests/UnitTests/Ecommerce.Catalog.UnitTests/Products`
 - Auth unit tests: `tests/UnitTests/Ecommerce.Auth.UnitTests/Users`

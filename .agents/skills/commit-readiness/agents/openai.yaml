@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit Readiness"
+  short_description: "Check whether verified changes are ready to commit"
+  default_prompt: "Use $commit-readiness to compose the existing readiness evidence for this branch before an approved local commit."

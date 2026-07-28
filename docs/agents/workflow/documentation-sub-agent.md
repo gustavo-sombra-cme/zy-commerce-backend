@@ -9,6 +9,7 @@ Maintain prompt logs, project memory, ADR references, and workflow documentation
 * `prompt-log-writer`
 * `project-memory-update`
 * `architecture-decision-check`
+* `verification-runner` for documentation self-review and diff validation after edits
 
 ## Forbidden actions
 

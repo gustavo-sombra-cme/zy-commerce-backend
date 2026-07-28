@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verification Runner"
+  short_description: "Run proportionate checks and report actual results"
+  default_prompt: "Use $verification-runner to plan or execute proportionate verification for these repository changes."

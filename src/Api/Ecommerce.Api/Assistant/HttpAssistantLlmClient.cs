@@ -50,6 +50,41 @@ public sealed class HttpAssistantLlmClient(
         return TryExtractOutputText(responseBody);
     }
 
+    public async Task<string?> CreateAgentResponseJsonAsync(
+        AssistantModelRequest modelRequest,
+        CancellationToken cancellationToken)
+    {
+        var llmOptions = options.Value;
+
+        if (!llmOptions.Enabled
+            || string.IsNullOrWhiteSpace(llmOptions.ResolvedModel)
+            || !TryGetEndpoint(llmOptions, out var endpoint)
+            || !llmOptions.TryResolveApiKey(out var apiKey))
+        {
+            return null;
+        }
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        httpRequest.Content = new StringContent(
+            JsonSerializer.Serialize(CreateAgentRequestBody(llmOptions.ResolvedModel, modelRequest), JsonOptions),
+            Encoding.UTF8,
+            "application/json");
+
+        using var response = await httpClient.SendAsync(
+            httpRequest,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            await LogProviderErrorAsync(response, cancellationToken);
+            return null;
+        }
+
+        return TryExtractOutputText(await response.Content.ReadAsStringAsync(cancellationToken));
+    }
+
     private static object CreateRequestBody(string model, string question) =>
         new
         {
@@ -111,6 +146,41 @@ public sealed class HttpAssistantLlmClient(
                 }
             }
         };
+
+    private static object CreateAgentRequestBody(string model, AssistantModelRequest request) =>
+        new
+        {
+            model,
+            input = BuildAgentInput(request),
+            text = new
+            {
+                format = new
+                {
+                    type = "json_schema",
+                    name = "catalog_agent_response",
+                    strict = true,
+                    schema = AssistantModelResponseJsonSchema.Create()
+                }
+            }
+        };
+
+    private static object[] BuildAgentInput(AssistantModelRequest request)
+    {
+        var input = new List<object>
+        {
+            new { role = "system", content = AssistantModelResponseJsonSchema.BuildInstructions(request) }
+        };
+
+        input.AddRange(request.Messages.Select(message => new
+        {
+            role = message.Role == AssistantMessageRole.Assistant ? "assistant" : "user",
+            content = message.Role == AssistantMessageRole.Tool
+                ? $"UNTRUSTED TOOL RESULT ({message.ToolName}, call {message.ToolCallId}): {message.Content}"
+                : message.Content
+        }));
+
+        return input.ToArray();
+    }
 
     private static string? TryExtractOutputText(string responseBody)
     {
@@ -311,12 +381,12 @@ public sealed class HttpAssistantLlmClient(
         You are an intent interpreter for a read-only ecommerce backend assistant.
         Return only one JSON object with this shape:
         {"kind":"RecentOrders","tools":["orders_search"],"arguments":{}}
-        Allowed kind values: Unsupported, RecentOrders, TotalSpend, ProductsOrdered, OrdersContainingProduct, OrdersAboveAmount, OrdersContainingProductsOverAmount, ProductFrequency, CatalogSearchProducts, CatalogGetProductBySearch, CatalogProductsUnderPrice, CatalogGetProduct.
+        Allowed kind values: Unsupported, RecentOrders, TotalSpend, ProductsOrdered, OrdersContainingProduct, OrdersAboveAmount, OrdersContainingProductsOverAmount, ProductFrequency, CatalogGoal, CatalogSearchProducts, CatalogGetProductBySearch, CatalogProductsUnderPrice, CatalogGetProduct.
         Allowed tool values: catalog_search, catalog_get_product, orders_search, orders_get_order, orders_analyze.
         Use only the tools required for the selected kind.
         Arguments may include only amount, searchText, or productId when required by the selected kind.
         Use CatalogSearchProducts with catalog_search and searchText for read-only product discovery questions such as "show me Galaxy products", "search for SKU ABC123", or "do you have headphones".
-        Use CatalogGetProductBySearch with catalog_search and catalog_get_product, and only searchText, for product detail or price questions such as "show me details for Galaxy", "details for SKU ABC123", "tell me about headphones", or "what is the price of Galaxy S24".
+        Prefer CatalogGoal with empty tools and empty arguments for any safe public catalog goal that needs catalog-agent reasoning, including details by name or SKU, comparisons, cheapest or most-expensive selection, description search, and multi-step catalog questions.
         Never include userId, buyerId, ownerId, customerId, subject, authorization, token, password, SQL, connection strings, internal prompts, or secrets.
         Return Unsupported with empty tools and empty arguments for mutating, admin, SQL, database, token, cross-user, internal, unsafe, or unclear requests.
         Do not answer the user and do not describe the plan.

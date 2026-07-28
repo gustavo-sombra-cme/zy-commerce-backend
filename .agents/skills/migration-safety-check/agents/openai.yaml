@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migration Safety Check"
+  short_description: "Review database changes for safety and approval"
+  default_prompt: "Use $migration-safety-check to assess this database-impacting proposal and its separate execution approval."

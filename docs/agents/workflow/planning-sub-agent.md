@@ -8,13 +8,13 @@ Prepare compliant plans without modifying files or running implementation comman
 
 * `architecture-decision-check`
 * `branch-start-check` for planning assumptions only
-* `prompt-log-writer` for planning logs when requested
+* `prompt-log-writer` before repository planning unless the user explicitly writes `SKIP PROMPT LOG`
 
 ## Forbidden actions
 
 * `commit-readiness`
 * `push-readiness`
-* File edits, branch changes, commits, pushes, PR creation, migrations, runtime behavior changes, or destructive actions.
+* File edits other than the required prompt log, branch changes, commits, pushes, PR creation, migrations, runtime behavior changes, or destructive actions.
 
 ## When invoked
 
@@ -22,7 +22,7 @@ Use for PLAN MODE and short planning prompts.
 
 ## Stop conditions
 
-Stop before file edits, code generation, branch changes, commits, pushes, migrations, or runtime behavior changes.
+Stop before file edits other than the required prompt log, code generation, branch changes, commits, pushes, migrations, or runtime behavior changes. Creating a planning prompt log does not authorize implementation.
 
 ## Risks
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prompt Log Writer"
+  short_description: "Create and finalize chronological prompt records"
+  default_prompt: "Use $prompt-log-writer to record this repository task with the next prompt number."

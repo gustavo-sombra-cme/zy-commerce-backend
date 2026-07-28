@@ -1,0 +1,4 @@
+interface:
+  display_name: "Push Readiness"
+  short_description: "Check branch safety and explicit push approval"
+  default_prompt: "Use $push-readiness to verify this committed branch before any push."

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Ecommerce.Api.Assistant.TextToSql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,12 @@ public sealed class AssistantOrchestrator(
             }
         }
 
+        var catalogDomainIntent = await TryRouteCatalogDomainAsync(question, cancellationToken);
+        if (catalogDomainIntent is not null)
+        {
+            return await RunCatalogAgentAsync(question, buyerId, catalogDomainIntent, cancellationToken);
+        }
+
         var intent = await InterpretIntentAsync(question, cancellationToken);
 
         return intent.Kind switch
@@ -49,10 +56,43 @@ public sealed class AssistantOrchestrator(
                 or AssistantIntentKind.CatalogSearchProducts
                 or AssistantIntentKind.CatalogGetProductBySearch
                 or AssistantIntentKind.CatalogGetProduct
-                => await catalogAssistantSubAgent.HandleAsync(intent, cancellationToken),
+                or AssistantIntentKind.CatalogGoal
+                => await RunCatalogAgentAsync(question, buyerId, intent, cancellationToken),
             _ => Unsupported()
         };
     }
+
+    private async Task<AssistantIntent?> TryRouteCatalogDomainAsync(
+        string question,
+        CancellationToken cancellationToken)
+    {
+        var plan = await deterministicIntentInterpreter.InterpretAsync(question, cancellationToken);
+        var intent = intentPlanValidator.Validate(question, plan);
+        return IsCatalogIntent(intent.Kind) ? intent : null;
+    }
+
+    private Task<AssistantQueryResponse> RunCatalogAgentAsync(
+        string question,
+        Guid buyerId,
+        AssistantIntent intent,
+        CancellationToken cancellationToken) =>
+        catalogAssistantSubAgent.RunAsync(
+            new CatalogAgentRequest(
+                question,
+                Array.Empty<AssistantConversationMessage>(),
+                new AssistantExecutionContext(
+                    Activity.Current?.TraceId.ToString() ?? string.Empty,
+                    buyerId,
+                    [AssistantDataScopes.CatalogPublic]),
+                intent),
+            cancellationToken);
+
+    private static bool IsCatalogIntent(AssistantIntentKind kind) =>
+        kind is AssistantIntentKind.CatalogProductsUnderPrice
+            or AssistantIntentKind.CatalogSearchProducts
+            or AssistantIntentKind.CatalogGetProductBySearch
+            or AssistantIntentKind.CatalogGetProduct
+            or AssistantIntentKind.CatalogGoal;
 
     private async Task<AssistantQueryResponse?> TryQueryTextToSqlAsync(
         string question,

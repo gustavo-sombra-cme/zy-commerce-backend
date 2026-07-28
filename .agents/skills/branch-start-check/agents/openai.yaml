@@ -1,0 +1,4 @@
+interface:
+  display_name: "Branch Start Check"
+  short_description: "Verify a safe dedicated branch before execution"
+  default_prompt: "Use $branch-start-check to verify this approved execution can safely begin on a dedicated branch."

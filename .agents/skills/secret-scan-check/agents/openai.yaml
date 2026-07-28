@@ -1,0 +1,4 @@
+interface:
+  display_name: "Secret Scan Check"
+  short_description: "Detect credentials and sensitive values in changes"
+  default_prompt: "Use $secret-scan-check to inspect these repository changes before commit."

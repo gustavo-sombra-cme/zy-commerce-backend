@@ -114,6 +114,11 @@ public sealed class AssistantIntentRouter
                 SearchText: catalogSearchText);
         }
 
+        if (LooksLikeCatalogGoal(normalized))
+        {
+            return new AssistantIntent(AssistantIntentKind.CatalogGoal);
+        }
+
         return new AssistantIntent(AssistantIntentKind.Unsupported);
     }
 
@@ -242,6 +247,19 @@ public sealed class AssistantIntentRouter
             && (normalized.StartsWith("show me ", StringComparison.Ordinal)
                 || normalized.StartsWith("find ", StringComparison.Ordinal)
                 || normalized.StartsWith("show ", StringComparison.Ordinal)));
+
+    private static bool LooksLikeCatalogGoal(string normalized) =>
+        !normalized.Contains("order", StringComparison.Ordinal)
+        && (normalized.StartsWith("show me ", StringComparison.Ordinal)
+            || normalized.StartsWith("show me details ", StringComparison.Ordinal)
+            || normalized.StartsWith("show details ", StringComparison.Ordinal)
+            || normalized.StartsWith("tell me about ", StringComparison.Ordinal)
+            || normalized.StartsWith("find ", StringComparison.Ordinal)
+            || normalized.StartsWith("search ", StringComparison.Ordinal)
+            || normalized.StartsWith("compare ", StringComparison.Ordinal)
+            || normalized.StartsWith("which product ", StringComparison.Ordinal)
+            || normalized.StartsWith("what is the price ", StringComparison.Ordinal)
+            || normalized.StartsWith("how much is ", StringComparison.Ordinal));
 
     private static string RemoveLeadingPhrase(string value, string phrase)
     {

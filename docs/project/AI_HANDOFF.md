@@ -60,7 +60,7 @@ Do not create these unless explicitly approved:
 - Auth refresh-token, protected Catalog read endpoint, token persistence behavior, public admin registration endpoint, or broader permission model
 - Customers module
 
-Prompt logging is required before execution unless the user writes `SKIP PROMPT LOG`.
+Prompt logging is required before repository planning, approved execution, artifact-producing testing, documentation changes, Skill maintenance, findings-first repository review, and global workflow-policy work unless the user writes `SKIP PROMPT LOG`. General explanation and read-only questions that create no repository artifact do not require a prompt log.
 
 Commit, push, and pull request creation are manual gates. Do not commit, push, or create a PR unless the user explicitly approves one of `APPROVED: COMMIT BACKEND CHANGES`, `APPROVED: PUSH`, `APPROVED: PUSH BACKEND BRANCH`, `APPROVED: CREATE BACKEND PR`, or `APPROVED: COMMIT AND PUSH BACKEND CHANGES`.
 
@@ -72,11 +72,13 @@ Reusable prompt defaults live in `docs/project/PROMPT_TEMPLATE.md`. Use it to ex
 
 Short planning prompts must follow the template's Plan Output Contract exactly and run the Plan Self-Validation Rule before returning a plan.
 
-Repo-local workflow skills are Markdown guidance only under `docs/skills/workflow/`; workflow sub-agent guidance lives under `docs/agents/workflow/`. They are backend-specific, not shared with the frontend repository, and do not replace explicit user approval.
+Repository-local workflow Skills are valid Codex Skill packages under `.agents/skills/`; workflow sub-agent guidance remains under `docs/agents/workflow/`. They are backend-specific, not shared with the frontend repository, and do not replace explicit user approval.
 
-Phase 2A wires those workflow skill and sub-agent docs into the backend Codex/harness instructions and prompt template only. It does not change runtime assistant behavior, Text-to-SQL behavior, MCP behavior, frontend contracts, database schema, CI, project files, or appsettings secrets.
+Readiness Skills compose evidence: commit readiness requires current branch/scope plus passing executed verification and secret scan, with applicable review, migration, prompt-log, and project-memory evidence; push readiness additionally requires passing commit-readiness, executed-verification, and secret-scan results. Verification dry runs classify checks and never claim `VERIFICATION_STATUS: PASS`. Credential-only concerns route to secret scanning, not migration safety, unless database target, ownership, permissions, schema, migration, execution, or SQL behavior changes.
 
-Project-wide AI skills and sub-agent decisions live in `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`. Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers.
+Current wiring connects those Skills and sub-agent docs to the backend Codex/harness instructions and prompt template only. It does not change runtime assistant behavior, Text-to-SQL behavior, MCP behavior, frontend contracts, database schema, CI, project files, or appsettings secrets.
+
+Project-wide AI skills and sub-agent decisions live in `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`. Catalog and Orders runtime assistant sub-agents are API-layer classes and dispatch business reads through existing Application/CQRS handlers; future runtime sub-agents must preserve that boundary unless a separately approved architecture change says otherwise.
 
 Phase 3A introduced the first runtime API-layer assistant sub-agent: order-specific assistant CQRS orchestration now lives behind `IOrdersAssistantSubAgent`/`OrdersAssistantSubAgent`. `AssistantOrchestrator` still owns Text-to-SQL first-pass/fallback, intent interpretation, catalog handling, unsupported responses, and response contracts. Text-to-SQL was not moved, converted into a skill, or changed into a selectable strategy in this task.
 
@@ -87,6 +89,10 @@ Phase 3C reviewed the post-extraction `AssistantOrchestrator`. It remains the hi
 Assistant broad catalog search is implemented as read-only API-layer orchestration. `CatalogSearchProducts` maps natural product discovery questions to `CatalogAssistantSubAgent`, which dispatches the existing Catalog Application `SearchProductsQuery` with `IsActive = true`, page `1`, and page size `10`. The first version searches SKU and Name through existing Catalog search support. It reuses `AssistantResponseTypes.CatalogProducts`, `AssistantCatalogProductsData`, `AssistantProductCardDto`, and `catalog_search`; no frontend contract, Text-to-SQL internal, MCP, schema, migration, raw SQL exposure, `genericTable`, or admin/write assistant behavior changed.
 
 Assistant product detail by search is implemented through `CatalogGetProductBySearch`. Explicit natural detail/price questions first dispatch `SearchProductsQuery(searchText, true, 1, 2)`. Zero matches return supported empty product choices, one active match dispatches `GetProductByIdQuery` and returns the existing `catalogProduct` contract, and multiple matches return at most two `catalogProducts` choices without guessing. Detail output is rechecked for active status. The intent uses only the existing `catalog_search` and `catalog_get_product` tools; Text-to-SQL internals, Orders behavior, frontend/MCP contracts, schema, migrations, and assistant write/admin behavior remain unchanged.
+
+The bounded autonomous Catalog agent supersedes deterministic Catalog tool sequencing for delegated catalog goals. `CatalogAssistantSubAgent` owns a provider-neutral bounded loop and a Catalog-only registry containing exactly `catalog_search_products` and `catalog_get_product`. Search is active-only and can filter name, SKU, description, and strict maximum price. Detail lookup accepts only a product ID returned by a successful search in the same execution. Treat model output and product text as untrusted: tool arguments, scopes, identifiers, final selections, and cheapest/most-expensive claims are validated in C#, and response DTOs are rebuilt from server tool results. The agent must never gain Catalog writes, arbitrary MediatR dispatch, repositories, DbContexts, raw SQL, Text-to-SQL control, or MCP execution. See `docs/decisions/ADR-007-bounded-autonomous-catalog-agent.md`.
+
+Demo source: `docs/demo/features/bounded-autonomous-catalog-agent-demo-slides.md`.
 
 Before commits that include code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes, use `docs/project/CODE_REVIEW.md`. Documentation-only maintenance is excluded from mandatory code review but still requires documentation self-review.
 
@@ -267,6 +273,7 @@ Prompt logs under `docs/prompts/` are historical records. Do not rewrite old pro
 - Feature demo slide deliverable workflow
 - Backend branch workflow rules
 - AI skills and sub-agent architecture documentation
+- Ecommerce Skill normalization, routing defect repair, and focused conditional-loading regression coverage
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction
 - Phase 3B runtime API-layer Catalog assistant sub-agent extraction
 - Phase 3C Assistant Orchestrator cleanup review

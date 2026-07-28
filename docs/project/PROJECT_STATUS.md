@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-Date: 2026-06-25
+Date: 2026-07-16
 
 The repository is a .NET 9 ASP.NET Core backend for an enterprise e-commerce system. It follows Clean Architecture First, Modular Monolith, Module Isolation, CQRS, and thin controller rules.
 
@@ -15,10 +15,10 @@ Agent operating rules are split between a short `AGENT.md` router and detailed f
 - `docs/project/ROADMAP.md` - Completed and candidate work
 - `docs/project/NEXT_SESSION.md` - Fast resume guide (< 5 minutes to read)
 - `docs/project/PROMPT_TEMPLATE.md` - Reusable planning and execution prompt defaults for shorter future prompts
-- `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md` - Repo-local AI workflow skill and sub-agent architecture decisions
+- `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md` - Repository-local Codex Skill and sub-agent architecture decisions
 - `docs/project/CODE_REVIEW.md` - Backend code review checklist for code/config/migration/CI/runtime-behavior documentation changes
 - `docs/project/FRONTEND_CONTRACT.md` - Frontend-facing API contract notes
-- `docs/skills/workflow/` - Repo-local workflow skill docs for repeated Codex/harness checks
+- `.agents/skills/` - Canonical repository-local Codex Skill root for repeated workflow checks
 - `docs/agents/workflow/` - Repo-local workflow sub-agent responsibility guidance
 - `docs/demo/features/` - Feature-focused demo slide source files for main/demo-worthy feature executions
 
@@ -75,6 +75,13 @@ Catalog uses:
 - Manual EF Core migration: `InitialCatalogSchema`
 - Manual EF Core migration: `AddProductPrice`
 - Query-side read model for product search
+- Optional strict maximum-price filtering (`Price < MaximumPrice`) applied before count and pagination
+
+### Bounded Autonomous Catalog Assistant
+
+The API-layer Catalog assistant now delegates safe public catalog goals to a bounded provider-neutral model/tool loop. The loop can select only `catalog_search_products` and `catalog_get_product`; both dispatch existing Catalog Application queries through MediatR. Search is active-only, detail identifiers must originate from a successful search in the same execution, final DTOs are rebuilt from trusted tool results, and iterations/tool calls/messages/page sizes have server-enforced limits. No write command, raw SQL, repository, DbContext, MCP tool, or arbitrary method is exposed to the model. See ADR-007.
+
+Demo source: `docs/demo/features/bounded-autonomous-catalog-agent-demo-slides.md`.
 
 ### Auth
 
@@ -315,13 +322,13 @@ Swagger/OpenAPI is enabled for local Development only. Swagger uses the standard
 
 ## Database Status
 
-Catalog has EF Core persistence and two approved migrations:
+Catalog has EF Core persistence and three approved migrations:
 
 - `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260608111338_InitialCatalogSchema.cs`
 - `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260618090000_AddProductPrice.cs`
 - `src/Modules/Catalog/Ecommerce.Catalog.Infrastructure/Persistence/Migrations/20260624090000_AddAssistantCatalogReadOnlyViews.cs`
 
-Auth has EF Core persistence and one approved migration:
+Auth has EF Core persistence and two approved migrations:
 
 - `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Persistence/Migrations/20260609092505_InitialAuthSchema.cs`
 - `src/Modules/Auth/Ecommerce.Auth.Infrastructure/Persistence/Migrations/20260623090000_AddUserRole.cs`
@@ -409,9 +416,9 @@ Agent rule files:
 - `instructions/05-completion.md` contains self-review, code review, execution summary, and completion rules.
 - `docs/project/PROMPT_TEMPLATE.md` defines default PLAN MODE and APPROVED EXECUTE expectations, including a strict Plan Output Contract, Plan Self-Validation Rule, branch workflow summary, repo-local workflow skill references, and feature demo slide deliverable rule so future prompts can be shorter without weakening execution lock, prompt logging, architecture, DDD, CQRS, module isolation, testing, or documentation rules.
 - Approved backend execution tasks must create a dedicated `feature/`, `fix/`, `docs/`, or `chore/` branch from latest `main` before implementation and must not commit, push, or create a PR without explicit backend approval.
-- Repo-local workflow skills live under `docs/skills/workflow/` and are Markdown guidance only. They are not approval by themselves and are not shared with the frontend repo.
-- Phase 2A wiring maps repo-local workflow skills and workflow sub-agent guidance into `AGENT.md`, `instructions/*`, and `docs/project/PROMPT_TEMPLATE.md`. This is workflow/documentation wiring only and does not change runtime behavior.
-- Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers.
+- Repository-local workflow Skills live under `.agents/skills/` as valid Codex Skill packages with `SKILL.md` and `agents/openai.yaml`. They are not approval by themselves and are not shared with the frontend repo.
+- Current wiring maps repository-local Skills and workflow sub-agent guidance into `AGENT.md`, `instructions/*`, and `docs/project/PROMPT_TEMPLATE.md`. This is tooling/documentation wiring only and does not change runtime behavior.
+- Catalog and Orders runtime assistant sub-agents are API-layer classes and dispatch business reads through existing Application/CQRS handlers; future runtime sub-agents must preserve that boundary unless a separately approved architecture change says otherwise.
 
 ## Test Status
 
@@ -713,7 +720,7 @@ Latest documentation-only execution after AI Skills And Sub-Agent Architecture:
 
 - Added `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md` to document repo-local workflow skills, workflow sub-agent guidance, API-layer runtime sub-agent decisions, and Text-to-SQL non-migration.
 - Added `docs/project/CODE_REVIEW.md`.
-- Added repo-local workflow skill docs under `docs/skills/workflow/`.
+- Added the precursor standalone workflow documents that were later normalized into repository-local Codex Skills.
 - Added workflow sub-agent guidance under `docs/agents/workflow/`.
 - Updated AGENT router, instructions, prompt template, and project memory to reference the new docs without making push automatic.
 - No runtime assistant code, Text-to-SQL implementation, MCP code, frontend files, migrations, database schema, appsettings secrets, or response contracts changed.
@@ -721,11 +728,28 @@ Latest documentation-only execution after AI Skills And Sub-Agent Architecture:
 
 Latest documentation-only execution after Phase 2A Workflow Skill Wiring:
 
-- Wired repo-local workflow skill docs and workflow sub-agent docs into `AGENT.md`, execution/planning instructions, documentation/memory instructions, completion instructions, and `docs/project/PROMPT_TEMPLATE.md`.
-- Improved `docs/project/CODE_REVIEW.md`, workflow skill docs, and workflow sub-agent docs with clearer required/optional usage, examples, output formats, stop conditions, and AI/Text-to-SQL safety checks.
+- Wired the precursor workflow documents and workflow sub-agent docs into `AGENT.md`, execution/planning instructions, documentation/memory instructions, completion instructions, and `docs/project/PROMPT_TEMPLATE.md`.
+- Improved `docs/project/CODE_REVIEW.md`, the precursor workflow documents, and workflow sub-agent docs with clearer required/optional usage, examples, output formats, stop conditions, and AI/Text-to-SQL safety checks.
 - Updated project memory and added prompt log `docs/prompts/091-phase-2-workflow-skill-wiring-execution.md`.
 - This was workflow/documentation wiring only. No runtime assistant code, Text-to-SQL implementation, MCP code, frontend files, migrations, database schema, appsettings secrets, CI, project files, or response contracts changed.
 - Restore, build, and test were intentionally not run because this was documentation/instruction only.
+
+Latest tooling/documentation execution after Ecommerce Skill normalization:
+
+- Selected `.agents/skills/` as the single canonical repository Skill root.
+- Converted all ten proven reusable workflow documents into valid Codex Skills with `SKILL.md` and `agents/openai.yaml`.
+- Added the progressive ADR reference at `.agents/skills/architecture-decision-check/references/adr-review-checklist.md`.
+- Removed competing standalone workflow Markdown sources and rewired current repository instructions and project documentation.
+- Preserved historical prompt logs and workflow sub-agent responsibility documents.
+- No application code, runtime assistant behavior, API contract, authentication, database schema, migration, infrastructure, or secret changed.
+
+Latest tooling/documentation execution after Ecommerce Skill routing defect repair:
+
+- Replaced the malformed loading index with canonical progressive-loading routes and aligned prompt logging across planning, execution, documentation, Skill maintenance, testing, and review work.
+- Standardized verification and secret-scan status contracts, separated migration plan safety from execution approval, and made commit/push readiness consume required evidence without rerunning producer Skills.
+- Removed the obsolete empty workflow directory and corrected confirmed migration-count, prompt-lifecycle, and runtime-sub-agent documentation drift.
+- Added `docs/skills/testing/skill-routing-defect-regression-report.md`; all seven focused conditional-loading and evidence-composition scenarios passed.
+- No application code, runtime behavior, API contract, authentication, database schema, migration, infrastructure, or secret changed. The unrelated pre-existing Text-to-SQL configuration diff remains outside this task.
 
 Latest code execution after Phase 3A Runtime Orders Assistant Sub-Agent:
 

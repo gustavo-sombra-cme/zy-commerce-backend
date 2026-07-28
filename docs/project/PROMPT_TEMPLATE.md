@@ -28,11 +28,12 @@ Before planning or execution, read:
 
 When the prompt starts with `PLAN MODE` or `Plan ...`:
 
+* Run `.agents/skills/prompt-log-writer/SKILL.md` before repository planning unless `SKIP PROMPT LOG` is present. Creating the planning log does not authorize implementation.
 * Use Planning Sub-Agent behavior from `docs/agents/workflow/planning-sub-agent.md`.
-* Use `docs/skills/workflow/architecture-decision-check.md` for boundary, module, AI autonomy, Text-to-SQL strategy, database, package, API, migration, or cross-module decisions.
+* Use `.agents/skills/architecture-decision-check/SKILL.md` for boundary, module, AI autonomy, Text-to-SQL strategy, database, package, API, migration, or cross-module decisions.
 * Do not invoke execution, commit, push, PR, migration execution, or destructive workflow skills.
 * Do not create code.
-* Do not modify files unless the user explicitly asks for documentation updates.
+* Apart from the required prompt log, do not modify files unless the user explicitly asks for documentation updates.
 * Do not run build, test, EF, scaffold, or migration commands.
 * Inspect repository context only as needed.
 * Identify architecture, DDD, CQRS, database, API, testing, and documentation impact.
@@ -264,17 +265,17 @@ PLAN_STATUS: PENDING_APPROVAL
 When the prompt starts with `APPROVED: EXECUTE` or `Execute approved ...`:
 
 * Execution is allowed only for the approved scope.
-* Run `docs/skills/workflow/branch-start-check.md`.
-* Run `docs/skills/workflow/prompt-log-writer.md` before implementation unless `SKIP PROMPT LOG` is present.
+* Run `.agents/skills/branch-start-check/SKILL.md`.
+* Run `.agents/skills/prompt-log-writer/SKILL.md` before implementation unless `SKIP PROMPT LOG` is present.
 * Use Execution Sub-Agent behavior from `docs/agents/workflow/execution-sub-agent.md`.
 * Follow the approved plan exactly.
 * Do not add unapproved modules, projects, migrations, schema changes, APIs, packages, auth behavior, or cross-module references.
-* Run `docs/skills/workflow/verification-runner.md`.
-* Run `docs/skills/workflow/project-memory-update.md` when project state changes.
-* Run `docs/skills/workflow/code-review-check.md` when the change includes code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation.
-* Run `docs/skills/workflow/secret-scan-check.md`.
-* Run `docs/skills/workflow/commit-readiness.md` before any approved local commit.
-* Run `docs/skills/workflow/push-readiness.md` only after explicit push approval.
+* Run `.agents/skills/verification-runner/SKILL.md`.
+* Run `.agents/skills/project-memory-update/SKILL.md` when project state changes.
+* Run `.agents/skills/code-review-check/SKILL.md` when the change includes code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation.
+* Run `.agents/skills/secret-scan-check/SKILL.md`.
+* Run `.agents/skills/commit-readiness/SKILL.md` before any approved local commit.
+* Run `.agents/skills/push-readiness/SKILL.md` only after explicit push approval.
 * Create or update the feature demo slide deliverable when the approved scope is a main feature, major platform capability, API module, integration, or demo-worthy backend behavior.
 * Run standard verification for code or project changes.
 
@@ -478,10 +479,10 @@ Prompt logs are historical records and should not be rewritten after completion.
 
 Reusable templates belong in project documentation, not prompt history.
 
-Repo-local workflow skill docs live in:
+Repository-local Codex Skills live in:
 
 ```text
-docs/skills/workflow/
+.agents/skills/
 ```
 
 Workflow sub-agent guidance lives in:
@@ -490,7 +491,7 @@ Workflow sub-agent guidance lives in:
 docs/agents/workflow/
 ```
 
-Use these docs for reusable workflow checks instead of duplicating large checklist sections in prompts or instruction files.
+Use each Skill's `SKILL.md` entrypoint for reusable workflow checks instead of duplicating large checklist sections in prompts or instruction files.
 
 ---
 

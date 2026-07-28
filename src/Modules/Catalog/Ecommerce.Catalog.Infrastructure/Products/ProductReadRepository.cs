@@ -47,12 +47,18 @@ public sealed class ProductReadRepository(
             var searchPattern = $"%{query.SearchTerm.Trim()}%";
             products = products.Where(product =>
                 EF.Functions.Like(EF.Property<string>(product, nameof(ProductSearchReadModel.Sku)), searchPattern)
-                || EF.Functions.Like(EF.Property<string>(product, nameof(ProductSearchReadModel.Name)), searchPattern));
+                || EF.Functions.Like(EF.Property<string>(product, nameof(ProductSearchReadModel.Name)), searchPattern)
+                || (product.Description != null && EF.Functions.Like(product.Description, searchPattern)));
         }
 
         if (query.IsActive.HasValue)
         {
             products = products.Where(product => product.IsActive == query.IsActive.Value);
+        }
+
+        if (query.MaximumPrice.HasValue)
+        {
+            products = products.Where(product => product.Price < query.MaximumPrice.Value);
         }
 
         var totalCount = await products.CountAsync(cancellationToken);
