@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-07-22
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -47,7 +47,8 @@ This file is designed to allow a future AI session to resume project work in les
 - Prompt template compliance contract enhancement for complete short-prompt plans
 - Feature demo slide deliverable workflow (`docs/demo/features/{feature-slug}-demo-slides.md`)
 - Backend branch workflow rules (`one task = one branch = one PR`)
-- AI skills and sub-agent architecture documentation (`docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`, `docs/skills/workflow/`, `docs/agents/workflow/`)
+- AI skills and sub-agent architecture documentation (`docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`, `.agents/skills/`, `docs/agents/workflow/`)
+- Ecommerce Skill normalization and routing defect repair; ten canonical Skill packages and seven focused conditional-loading regressions
 - Phase 2A workflow skill wiring into backend Codex/harness instructions and prompt template; documentation-only, no runtime behavior changed
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction; behavior-preserving refactor, no Text-to-SQL strategy change
 - Phase 3B runtime API-layer Catalog assistant sub-agent extraction; behavior-preserving refactor, no broad product search addition
@@ -461,11 +462,13 @@ Accepted backend push approval phrases are `APPROVED: PUSH` and `APPROVED: PUSH 
 
 ### Important: Repo-Local Workflow Skills
 
-Workflow skills live under `docs/skills/workflow/` and workflow sub-agent guidance lives under `docs/agents/workflow/`. They are repo-local Markdown guidance only, backend-specific, and not approval by themselves.
+Workflow Skills live under `.agents/skills/` as valid repository-local Codex Skill packages, and workflow sub-agent guidance lives under `docs/agents/workflow/`. They are backend-specific and not approval by themselves.
+
+Prompt logging applies to repository planning, approved execution, artifact-producing testing, documentation changes, Skill maintenance, findings-first repository review, and global workflow-policy work unless explicitly skipped. Commit and push readiness consume existing passing evidence; verification dry runs classify checks without claiming success; credential-only concerns do not trigger migration safety unless database-impacting behavior changes.
 
 Project-wide AI skills and sub-agent decisions live in `docs/project/AI_SKILLS_SUBAGENT_ARCHITECTURE.md`.
 
-Runtime assistant sub-agents, if introduced later, must remain API-layer classes and dispatch business reads through existing Application/CQRS handlers. Do not move Text-to-SQL or convert it into a skill without a separate approved task.
+Catalog and Orders runtime assistant sub-agents are API-layer classes and dispatch business reads through existing Application/CQRS handlers. Future runtime sub-agents must preserve that boundary unless a separately approved architecture change says otherwise. Do not move Text-to-SQL or convert it into a skill without a separate approved task.
 
 ### Critical: Prompt Logging
 

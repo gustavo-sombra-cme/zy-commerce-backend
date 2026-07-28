@@ -4,13 +4,13 @@
 
 This document defines the backend repository's project-wide AI skills and sub-agent architecture. It covers Codex/harness workflow guidance and future runtime assistant organization without changing runtime behavior.
 
-Workflow skills in this repository are repo-local Markdown only. They are not installed Codex skills, not shared with the frontend repository, and not approval by themselves.
+Workflow skills in this repository are valid repository-local Codex Skills under `.agents/skills/`. They are not shared with the frontend repository and are not approval by themselves.
 
-Runtime assistant sub-agents, if introduced later, remain API-layer classes. Catalog, Orders, and Auth modules must not know about agents, prompts, model planning, Text-to-SQL routing, provider diagnostics, or assistant-specific orchestration.
+Catalog and Orders runtime assistant sub-agents are API-layer classes. Future runtime sub-agents must preserve that boundary unless a separately approved architecture change says otherwise. Catalog, Orders, and Auth modules must not know about agents, prompts, model planning, Text-to-SQL routing, provider diagnostics, or assistant-specific orchestration.
 
 ## Definitions: Skill vs Sub-Agent
 
-A skill is a focused reusable capability with clear inputs, outputs, rules, stop conditions, and verification expectations.
+A Skill is a focused reusable Codex capability with a dedicated directory, a required `SKILL.md` entrypoint, UI metadata in `agents/openai.yaml`, and only the supporting resources it needs.
 
 A sub-agent is a broader responsibility boundary that may use one or more skills. In this repository, workflow sub-agents are Markdown guidance under `docs/agents/workflow/`.
 
@@ -18,7 +18,7 @@ Runtime sub-agents are future API-layer classes that coordinate assistant behavi
 
 ## Workflow Skills
 
-Workflow skills live under `docs/skills/workflow/`.
+The canonical Skill root is `.agents/skills/`. Each Skill directory is named in lowercase kebab case and contains exactly one required `SKILL.md` entrypoint.
 
 Required backend workflow skills:
 
@@ -33,7 +33,37 @@ Required backend workflow skills:
 * `secret-scan-check`
 * `migration-safety-check`
 
-These skill docs are references for repeated checks. They do not replace `AGENT.md`, `instructions/*`, or explicit user approval.
+These Skills provide repeated checks. They do not replace `AGENT.md`, `instructions/*`, or explicit user approval. Their entrypoints are:
+
+* `.agents/skills/architecture-decision-check/SKILL.md`
+* `.agents/skills/branch-start-check/SKILL.md`
+* `.agents/skills/code-review-check/SKILL.md`
+* `.agents/skills/commit-readiness/SKILL.md`
+* `.agents/skills/migration-safety-check/SKILL.md`
+* `.agents/skills/project-memory-update/SKILL.md`
+* `.agents/skills/prompt-log-writer/SKILL.md`
+* `.agents/skills/push-readiness/SKILL.md`
+* `.agents/skills/secret-scan-check/SKILL.md`
+* `.agents/skills/verification-runner/SKILL.md`
+
+Only `architecture-decision-check` currently needs a bundled reference: `references/adr-review-checklist.md`. It loads that checklist when an architecture area is affected, an existing ADR may own the decision, or materiality is uncertain. The remaining Skills are concise enough to operate from `SKILL.md` and repository sources directly; none requires scripts or assets.
+
+### Skill Catalog
+
+| Directory / display name | Trigger summary | Supporting resources | Output contract |
+|---|---|---|---|
+| `architecture-decision-check` / Architecture Decision Check | Architecture, boundary, persistence, security, integration, contract, technology, or runtime AI decisions | `references/adr-review-checklist.md`; no scripts or assets | `ADR_ACTION: CREATE \| UPDATE \| NOT_REQUIRED \| BLOCKED` |
+| `branch-start-check` / Branch Start Check | Start of an explicitly approved execution | No references, scripts, or assets | `BRANCH_START: PASS \| BLOCKED` |
+| `code-review-check` / Code Review Check | Findings-first review or pre-commit review of behavior-affecting changes | Reads `docs/project/CODE_REVIEW.md`; no bundled resources | `CODE_REVIEW: PASS \| BLOCKED` |
+| `commit-readiness` / Commit Readiness | Immediately before an explicitly approved local commit | Consumes existing branch, scope, review, verification, secret, applicable migration, prompt-log, and memory evidence | `COMMIT_READINESS: PASS \| BLOCKED` |
+| `migration-safety-check` / Migration Safety Check | Schema, migration, SQL, migration-permission, execution, or database-target/ownership work; not credential-only handling | Reads repository database guidance; no bundled resources | Plan safety, execution approval, and `MIGRATION_SAFETY: PASS \| FAIL \| BLOCKED \| NOT_APPLICABLE` |
+| `project-memory-update` / Project Memory Update | Verified work changes persistent project state or operating constraints | Reads only affected project-memory files; no bundled resources | `PROJECT_MEMORY_UPDATE: PASS \| BLOCKED` |
+| `prompt-log-writer` / Prompt Log Writer | Repository planning, execution, artifact-producing testing, documentation, Skill maintenance, or review unless explicitly skipped | Reads prompt-log rules; no bundled resources | `PROMPT_LOG: PASS \| BLOCKED` |
+| `push-readiness` / Push Readiness | Immediately before a requested push | Consumes commit-readiness, executed-verification, and secret-scan evidence | `PUSH_READINESS: PASS \| BLOCKED` |
+| `secret-scan-check` / Secret Scan Check | Before commit/push or whenever credential handling changes | Reads repository security guidance; no bundled resources | `SECRET_SCAN_STATUS: PASS \| BLOCKED` |
+| `verification-runner` / Verification Runner | Dry-run planning when requested, or executed verification after changes | Reads repository verification guidance; no bundled resources | `VERIFICATION_DRY_RUN: COMPLETE \| BLOCKED` or `VERIFICATION_STATUS: PASS \| FAIL \| BLOCKED` |
+
+Every Skill directory under `.agents/skills/` contains its canonical `SKILL.md` entrypoint and `agents/openai.yaml` UI metadata file.
 
 ## Workflow Sub-Agents
 
@@ -111,10 +141,10 @@ The following must not become automatic skills:
 ## Migration Roadmap
 
 1. Document the repo-local AI skills and sub-agent architecture.
-2. Add reusable workflow skill docs and workflow sub-agent guidance.
+2. Add reusable repository-local Codex Skills and workflow sub-agent guidance.
 3. Update router, instructions, prompt template, and project memory to reference the docs.
 4. Keep runtime assistant code unchanged.
-5. Later, consider API-layer runtime sub-agent classes around existing assistant orchestration.
+5. Keep the implemented Catalog and Orders runtime sub-agent classes in the API layer and evaluate any additional runtime sub-agent separately.
 6. Later, consider a selectable Text-to-SQL strategy with explicit telemetry.
 7. Defer any admin/support assistant sub-agents until separate ADRs, tests, and authorization rules are approved.
 
@@ -131,7 +161,7 @@ The following must not become automatic skills:
 
 ## Open Future Work
 
-* Decide whether runtime sub-agent classes should be introduced around the current `AssistantOrchestrator`.
+* Decide whether any additional runtime sub-agent is justified beyond the implemented Catalog and Orders sub-agents.
 * Decide telemetry shape for future selectable Text-to-SQL strategy.
-* Decide whether workflow skill docs need examples for frontend/backend parity without sharing a common skill set.
-* Add architecture tests if runtime sub-agent classes are introduced.
+* Decide whether future repository Skills need additional scenarios without sharing a common backend/frontend Skill set.
+* Extend architecture tests when additional runtime sub-agent boundaries are introduced or existing boundaries change.

@@ -14,11 +14,11 @@ After execution the agent must review:
 
 The review must be included in the execution summary.
 
-Use `docs/skills/workflow/verification-runner.md` for verification selection and reporting.
+Use `.agents/skills/verification-runner/SKILL.md` for verification selection and reporting.
 
-Use `docs/skills/workflow/secret-scan-check.md` before commit and before push readiness.
+Use `.agents/skills/secret-scan-check/SKILL.md` before commit and before push readiness.
 
-Use `docs/skills/workflow/migration-safety-check.md` when migrations, schema changes, raw SQL, database users, or database connection strings are involved.
+Use `.agents/skills/migration-safety-check/SKILL.md` for schema changes, EF migrations, raw SQL schema or data operations, migration execution, migration-affecting database users or permissions, or connection changes that alter the target database or ownership boundary. Credential-only concerns route to secret scanning unless database target, ownership, permission, schema, migration, or SQL behavior changes.
 
 ---
 
@@ -26,15 +26,19 @@ Use `docs/skills/workflow/migration-safety-check.md` when migrations, schema cha
 
 Before any commit that includes code, project/configuration files, migrations, CI workflow files, or runtime-behavior documentation changes, run the review checklist in `docs/project/CODE_REVIEW.md`.
 
-Use Code Review Sub-Agent behavior from `docs/agents/workflow/code-review-sub-agent.md` and `docs/skills/workflow/code-review-check.md` where applicable.
+Use Code Review Sub-Agent behavior from `docs/agents/workflow/code-review-sub-agent.md` and `.agents/skills/code-review-check/SKILL.md` where applicable.
 
 Documentation-only maintenance changes are excluded from mandatory `CODE_REVIEW.md`, but still require documentation self-review.
 
 Code review findings must lead the report and must stop commit readiness when they identify bugs, architecture violations, missing tests for behavior changes, security risks, secrets, generated artifacts, or unrelated changes.
 
-Use `docs/skills/workflow/commit-readiness.md` before any approved local commit.
+Use `.agents/skills/commit-readiness/SKILL.md` before any approved local commit.
 
-Use `docs/skills/workflow/push-readiness.md` before any approved push. Push readiness is not approval. Push still requires `APPROVED: PUSH` or `APPROVED: PUSH BACKEND BRANCH`.
+Commit readiness must consume passing executed-verification and secret-scan evidence, plus applicable review, migration-safety, prompt-log, project-memory, branch, and scope evidence. Missing required evidence blocks readiness.
+
+Use `.agents/skills/push-readiness/SKILL.md` before any approved push. Push readiness is not approval. Push still requires `APPROVED: PUSH` or `APPROVED: PUSH BACKEND BRANCH`.
+
+Push readiness must consume `COMMIT_READINESS: PASS`, `VERIFICATION_STATUS: PASS`, and `SECRET_SCAN_STATUS: PASS`. It must not recreate those checks, and missing required evidence blocks readiness.
 
 ---
 

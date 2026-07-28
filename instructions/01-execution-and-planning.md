@@ -36,7 +36,9 @@ Without approval:
 
 Planning prompts use the Planning Sub-Agent behavior in `docs/agents/workflow/planning-sub-agent.md`.
 
-Use `docs/skills/workflow/architecture-decision-check.md` when planning boundary, module, runtime AI autonomy, Text-to-SQL strategy, database, package, API, migration, or cross-module changes.
+Apply `.agents/skills/prompt-log-writer/SKILL.md` before repository planning unless the user explicitly writes `SKIP PROMPT LOG`. The prompt log is the sole governance artifact permitted by a planning request; it records the plan and does not authorize implementation or any other repository modification.
+
+Use `.agents/skills/architecture-decision-check/SKILL.md` when planning boundary, module, runtime AI autonomy, Text-to-SQL strategy, database, package, API, migration, or cross-module changes.
 
 Planning responses must contain, at minimum:
 
@@ -68,7 +70,7 @@ Short planning prompts such as "Plan next Catalog feature: Update Product Detail
 
 Short planning prompts must return every required section from `docs/project/PROMPT_TEMPLATE.md#required-plan-output` using the exact section names and must perform the template's Plan Self-Validation Rule before responding.
 
-Short prompts must use applicable repo-local workflow skill docs under `docs/skills/workflow/` for repeated workflow checks instead of duplicating their full checklist text in every response.
+Short prompts must use applicable repository Skills under `.agents/skills/` for repeated workflow checks instead of duplicating their instructions in every response.
 
 Short planning prompts must not invoke execution, commit, push, PR, migration execution, or destructive workflow skills.
 
@@ -76,7 +78,7 @@ Short execution prompts such as "Execute approved feature: Update Product Detail
 
 APPROVED: EXECUTE
 
-The execution lock remains mandatory for all file creation, file modification, code generation, command execution, scaffolding, migrations, and project changes.
+Except for the prompt log required by the repository prompt-logging rule, the execution lock remains mandatory for all file creation, file modification, code generation, command execution, scaffolding, migrations, and project changes.
 
 Short prompts do not override architecture, DDD, CQRS, module isolation, documentation, prompt logging, testing, security, or completion rules.
 
@@ -102,9 +104,9 @@ For every `APPROVED: EXECUTE` task:
 
 Apply Execution Sub-Agent behavior from `docs/agents/workflow/execution-sub-agent.md`.
 
-Apply `docs/skills/workflow/branch-start-check.md` before implementation.
+Apply `.agents/skills/branch-start-check/SKILL.md` before implementation.
 
-Apply `docs/skills/workflow/prompt-log-writer.md` before implementation unless the user explicitly writes `SKIP PROMPT LOG`.
+Apply `.agents/skills/prompt-log-writer/SKILL.md` before implementation unless the user explicitly writes `SKIP PROMPT LOG`.
 
 1. Confirm the current repository path.
 2. Confirm the current branch.
@@ -143,7 +145,7 @@ Before any approved commit, run or confirm:
 * `git status --short --branch`
 * `git diff --name-only`
 * Changed files were reviewed.
-* Applicable repo-local workflow skills under `docs/skills/workflow/` were applied.
+* Applicable repository Skills under `.agents/skills/` were applied.
 * No unrelated files are included.
 * No secrets are included.
 * No generated artifacts are included.

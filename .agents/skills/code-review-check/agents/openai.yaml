@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review Check"
+  short_description: "Review diffs for bugs, risk, and scope drift"
+  default_prompt: "Use $code-review-check to perform a findings-first review of this repository diff."

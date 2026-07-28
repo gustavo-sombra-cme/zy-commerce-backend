@@ -71,7 +71,7 @@
 
 - Keep architecture tests green as modules evolve.
 - Use `docs/project/PROMPT_TEMPLATE.md` to keep future planning and execution prompts shorter while preserving approval, logging, architecture, DDD, CQRS, testing, and documentation rules.
-- Use repo-local workflow skill docs under `docs/skills/workflow/` for repeated Codex/harness checks while keeping approval gates explicit.
+- Use repository-local Codex Skills under `.agents/skills/` for repeated checks while keeping approval gates explicit.
 - For short planning prompts, preserve the full Plan Output Contract and Plan Self-Validation Rule in `docs/project/PROMPT_TEMPLATE.md`.
 - For main/demo-worthy feature executions, create or update `docs/demo/features/{feature-slug}-demo-slides.md` with slide-ready Markdown, Mermaid diagrams where useful, speaker cues, demo script, test evidence, risks/tradeoffs, and Q&A talking points.
 - Keep project memory documentation current after execution tasks.
@@ -80,7 +80,7 @@
   - Update `docs/project/AI_HANDOFF.md` for constraint changes.
   - Update `docs/project/ROADMAP.md` for milestone changes.
 - Keep AGENT.md and instruction files synchronized when operating rules change.
-- Keep repo-local workflow skill and sub-agent guidance wired through `AGENT.md`, `instructions/*`, and `docs/project/PROMPT_TEMPLATE.md` without treating guidance as approval.
+- Keep repository-local Skills and sub-agent guidance wired through `AGENT.md`, `instructions/*`, and `docs/project/PROMPT_TEMPLATE.md` without treating guidance as approval.
 - Continue adding features only through explicit planning and approval.
 
 ## Catalog Candidates
@@ -211,5 +211,5 @@ Potential future work:
 - Learning journal entries when requested
 - README onboarding once the architecture stabilizes
 - Reusable cross-project Codex skill for feature demo slide generation after the repo workflow proves stable
-- Additional repo-local workflow skill examples if future backend workflow gaps appear
+- Additional repository-local Skill scenarios if future backend workflow gaps appear
 - Later consider additional API-layer runtime assistant sub-agents through a separate approved plan; do not infer them from the workflow Markdown guidance.
