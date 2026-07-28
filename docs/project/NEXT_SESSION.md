@@ -1,6 +1,6 @@
 # Next Session Resume Guide
 
-**Last Updated:** 2026-07-22
+**Last Updated:** 2026-07-28
 
 This file is designed to allow a future AI session to resume project work in less than 5 minutes.
 
@@ -55,6 +55,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Phase 3C Assistant Orchestrator cleanup review; documentation-only, no new runtime sub-agents, no Text-to-SQL changes
 - Assistant broad catalog search; read-only product discovery by SKU/name text through existing Catalog Application search, active-only, no Text-to-SQL internal changes
 - Assistant product detail by natural name or SKU; zero matches return supported empty choices, unique active matches return existing `catalogProduct` detail, and multiple matches return choices without guessing
+- Assistant product comparison by name or SKU; each side resolves independently, ambiguity returns choices, and trusted detail prices drive deterministic comparison
 - Bounded autonomous Catalog assistant; provider-neutral goal/tool loop, two allowlisted read tools, trusted per-execution identifiers, grounded structured responses, hard runtime limits, and database-backed maximum-price filtering
 
 ---
@@ -121,8 +122,9 @@ All approved projects exist and build successfully:
 - Order-specific assistant CQRS orchestration lives behind API-layer `IOrdersAssistantSubAgent`/`OrdersAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - Catalog-specific assistant CQRS orchestration lives behind API-layer `ICatalogAssistantSubAgent`/`CatalogAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - Phase 3C confirmed `AssistantOrchestrator` is coordination-focused after Orders/Catalog sub-agent extraction. Do not add Support/Safety sub-agents unless future complexity creates clear value.
-- Broad catalog search is supported through `CatalogSearchProducts`, handled by `CatalogAssistantSubAgent`, and dispatched to existing `SearchProductsQuery` with `IsActive = true`, page `1`, and page size `10`. It searches SKU and Name through existing Catalog support and reuses `catalogProducts` structured data.
+- Broad catalog search is supported through `CatalogSearchProducts`, handled by `CatalogAssistantSubAgent`, and dispatched to existing `SearchProductsQuery` with `IsActive = true`, page `1`, and page size `10`. It searches SKU, Name, and nullable Description through existing Catalog support and reuses `catalogProducts` structured data.
 - Natural product detail lookup is supported through `CatalogGetProductBySearch`. It searches active products with page size `2`, uses `GetProductByIdQuery` only for one match, rechecks active status, returns empty `catalogProducts` for zero matches, returns existing `catalogProduct` for one match, and returns up to two `catalogProducts` choices for multiple matches.
+- Product comparison recognizes approved two-sided natural phrases, searches each name/SKU/search term independently with active-only page-size-2 queries, refuses to guess on ambiguity, and loads two trusted details before calculating price differences or the cheaper/equal-price outcome. It reuses `catalogProducts` and the existing Catalog agent tools.
 - `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
 - Provider selection is backend configuration only. `Assistant:Llm:Provider` defaults to `OpenAI`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects `GeminiAssistantLlmClient`.
 - Gemini is a POC/testing provider. Configure it with `ECOMMERCE_ASSISTANT_GEMINI_API_KEY`, optional `ECOMMERCE_ASSISTANT_GEMINI_MODEL` (default `gemini-2.5-flash`), and optional `ECOMMERCE_ASSISTANT_GEMINI_ENDPOINT` (default `https://generativelanguage.googleapis.com/v1beta`).
@@ -311,7 +313,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 ## Current Phase
 
-**Phase:** Awaiting Next Approved Task
+**Phase:** Awaiting Local Commit Approval
 
 **Completed Phases:**
 1. Solution skeleton
@@ -365,6 +367,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 49. Phase 3C Assistant Orchestrator cleanup review
 50. Assistant broad catalog search
 51. Assistant product detail by natural name or SKU
+52. Assistant product comparison by name or SKU
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
@@ -387,13 +390,13 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 
 ## Next Approved Task
 
-**There is no currently approved task after Assistant product detail by search is committed.**
+**There is no currently approved task after Assistant product comparison is verified.**
 
-The last completed work was Assistant product detail by natural name or SKU. Wait for explicit user direction with APPROVED: EXECUTE before beginning any new execution work.
+The last completed work was Assistant product comparison by natural name or SKU. It is fully verified on `feature/assistant-product-comparison` and awaits explicit local commit approval.
 
 The backend branch workflow now requires starting approved execution tasks from latest `main` on a new dedicated branch, with dirty-worktree safety and manual commit/push/PR gates.
 
-Assistant product detail by search added read-only natural detail/price questions using existing Catalog Application queries. Zero matches return supported empty choices, unique active matches return existing product detail data, and multiple matches return choices without guessing. It did not change Text-to-SQL internals, frontend contracts, MCP, database schema, migrations, or assistant write/admin behavior.
+Assistant product comparison added two-sided active Catalog resolution, safe empty and ambiguity outcomes, two trusted detail reads, and deterministic cheaper/equal-price answers. It did not change frontend or MCP contracts, Text-to-SQL implementation, database schema, migrations, packages, or assistant write/admin behavior. Demo source: `docs/demo/features/assistant-product-comparison-demo-slides.md`.
 
 **How to Proceed:**
 

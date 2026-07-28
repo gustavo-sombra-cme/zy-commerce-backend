@@ -100,6 +100,11 @@ public sealed class AssistantIntentRouter
             return new AssistantIntent(AssistantIntentKind.CatalogGetProduct, ProductId: parsedProductId);
         }
 
+        if (CatalogComparisonRequestParser.TryParse(raw, out _))
+        {
+            return new AssistantIntent(AssistantIntentKind.CatalogGoal);
+        }
+
         if (TryExtractCatalogDetailSearch(raw, normalized, out var detailSearchText))
         {
             return new AssistantIntent(

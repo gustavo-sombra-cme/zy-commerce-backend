@@ -32,6 +32,18 @@ public sealed class CatalogAssistantSubAgent(
             return Unsupported();
         }
 
+        CatalogComparisonRequest? comparisonRequest = null;
+        if (CatalogComparisonRequestParser.TryParse(request.UserMessage, out var parsedComparison))
+        {
+            if (safetyPolicy.IsUnsafeQuestion(parsedComparison.FirstSearchText)
+                || safetyPolicy.IsUnsafeQuestion(parsedComparison.SecondSearchText))
+            {
+                return Unsupported();
+            }
+
+            comparisonRequest = parsedComparison;
+        }
+
         if (!options.Value.Enabled)
         {
             return Failed("The bounded catalog agent is disabled.");
@@ -41,6 +53,7 @@ public sealed class CatalogAssistantSubAgent(
         var trustedProducts = new Dictionary<Guid, AssistantProductCardDto>();
         var detailedProductIds = new HashSet<Guid>();
         var toolsUsed = new List<string>();
+        var searchesByText = new Dictionary<string, CatalogSearchToolResult>(StringComparer.OrdinalIgnoreCase);
         CatalogSearchToolResult? lastSearch = null;
         var messages = BuildInitialMessages(request);
 
@@ -124,7 +137,12 @@ public sealed class CatalogAssistantSubAgent(
                             toolsUsed.Add(result.ToolName);
                         }
 
-                        CaptureTrustedProducts(result, trustedProducts, detailedProductIds, ref lastSearch);
+                        CaptureTrustedProducts(
+                            result,
+                            trustedProducts,
+                            detailedProductIds,
+                            searchesByText,
+                            ref lastSearch);
                     }
 
                     var resultCount = result.Data switch
@@ -161,7 +179,9 @@ public sealed class CatalogAssistantSubAgent(
                     trustedProducts,
                     detailedProductIds,
                     toolsUsed,
-                    lastSearch);
+                    lastSearch,
+                    comparisonRequest,
+                    searchesByText);
                 LogCompletion(
                     request,
                     iteration,
@@ -238,11 +258,17 @@ public sealed class CatalogAssistantSubAgent(
         AssistantToolExecutionResult result,
         IDictionary<Guid, AssistantProductCardDto> trustedProducts,
         ISet<Guid> detailedProductIds,
+        IDictionary<string, CatalogSearchToolResult> searchesByText,
         ref CatalogSearchToolResult? lastSearch)
     {
         if (result.Data is CatalogSearchToolResult searchResult)
         {
             lastSearch = searchResult;
+            if (!string.IsNullOrWhiteSpace(searchResult.SearchText))
+            {
+                searchesByText[searchResult.SearchText.Trim()] = searchResult;
+            }
+
             foreach (var product in searchResult.Products.Where(product => product.IsActive))
             {
                 trustedProducts[product.ProductId] = product;
@@ -262,7 +288,9 @@ public sealed class CatalogAssistantSubAgent(
         IReadOnlyDictionary<Guid, AssistantProductCardDto> trustedProducts,
         IReadOnlySet<Guid> detailedProductIds,
         IReadOnlyCollection<string> toolsUsed,
-        CatalogSearchToolResult? lastSearch)
+        CatalogSearchToolResult? lastSearch,
+        CatalogComparisonRequest? comparisonRequest,
+        IReadOnlyDictionary<string, CatalogSearchToolResult> searchesByText)
     {
         if (finalAnswer is null || toolsUsed.Count == 0)
         {
@@ -278,6 +306,17 @@ public sealed class CatalogAssistantSubAgent(
             }
 
             selected.Add(product);
+        }
+
+        if (comparisonRequest is not null)
+        {
+            return BuildComparisonResponse(
+                comparisonRequest,
+                finalAnswer,
+                selected,
+                detailedProductIds,
+                toolsUsed,
+                searchesByText);
         }
 
         if (finalAnswer.ResponseType == CatalogAgentFinalResponseType.CatalogProduct
@@ -341,6 +380,177 @@ public sealed class CatalogAssistantSubAgent(
             AssistantResponseTypes.CatalogProducts,
             new AssistantCatalogProductsData(selected, finalAnswer.MaximumPrice ?? lastSearch?.MaximumPrice));
     }
+
+    private static AssistantQueryResponse BuildComparisonResponse(
+        CatalogComparisonRequest comparison,
+        CatalogAgentFinalAnswer finalAnswer,
+        IReadOnlyCollection<AssistantProductCardDto> selected,
+        IReadOnlySet<Guid> detailedProductIds,
+        IReadOnlyCollection<string> toolsUsed,
+        IReadOnlyDictionary<string, CatalogSearchToolResult> searchesByText)
+    {
+        if (finalAnswer.ResponseType != CatalogAgentFinalResponseType.CatalogProducts
+            || !searchesByText.TryGetValue(comparison.FirstSearchText, out var firstSearch)
+            || !searchesByText.TryGetValue(comparison.SecondSearchText, out var secondSearch)
+            || !IsValidComparisonSearch(firstSearch)
+            || !IsValidComparisonSearch(secondSearch))
+        {
+            return Failed("The catalog agent did not verify both comparison searches.", toolsUsed);
+        }
+
+        var missingTerms = new List<string>();
+        if (firstSearch.TotalCount == 0)
+        {
+            missingTerms.Add(comparison.FirstSearchText);
+        }
+
+        if (secondSearch.TotalCount == 0)
+        {
+            missingTerms.Add(comparison.SecondSearchText);
+        }
+
+        if (missingTerms.Count > 0)
+        {
+            if (selected.Count > 0)
+            {
+                return Failed("The catalog agent selected a product for an incomplete comparison.", toolsUsed);
+            }
+
+            return new AssistantQueryResponse(
+                $"I did not find an active product matching {string.Join(" or ", missingTerms.Select(Quote))}, so I cannot compare the two products.",
+                toolsUsed,
+                AssistantDataScopes.CatalogPublic,
+                false,
+                AssistantResponseTypes.CatalogProducts,
+                new AssistantCatalogProductsData(Array.Empty<AssistantProductCardDto>(), null));
+        }
+
+        var ambiguousSearches = new List<(string Term, CatalogSearchToolResult Search)>();
+        if (firstSearch.TotalCount > 1)
+        {
+            ambiguousSearches.Add((comparison.FirstSearchText, firstSearch));
+        }
+
+        if (secondSearch.TotalCount > 1)
+        {
+            ambiguousSearches.Add((comparison.SecondSearchText, secondSearch));
+        }
+
+        if (ambiguousSearches.Count > 0)
+        {
+            if (ambiguousSearches.Any(item => item.Search.Products.Count < 2))
+            {
+                return Failed("The catalog search choices were inconsistent with their verified counts.", toolsUsed);
+            }
+
+            var choices = ambiguousSearches
+                .SelectMany(item => item.Search.Products)
+                .Where(product => product.IsActive)
+                .DistinctBy(product => product.ProductId)
+                .ToArray();
+            if (!finalAnswer.NeedsClarification
+                || choices.Length == 0
+                || !IdsMatch(selected, choices))
+            {
+                return Failed("The catalog agent did not return the verified ambiguous choices.", toolsUsed);
+            }
+
+            var groups = ambiguousSearches.Select(item =>
+                $"{Quote(item.Term)} matched {string.Join("; ", item.Search.Products.Select(FormatChoice))}");
+            return new AssistantQueryResponse(
+                $"I found multiple active products, so I will not guess: {string.Join(". ", groups)}. Please choose an exact SKU.",
+                toolsUsed,
+                AssistantDataScopes.CatalogPublic,
+                false,
+                AssistantResponseTypes.CatalogProducts,
+                new AssistantCatalogProductsData(choices, null));
+        }
+
+        if (firstSearch.Products.Count != 1 || secondSearch.Products.Count != 1)
+        {
+            return Failed("The catalog search results were inconsistent with their verified counts.", toolsUsed);
+        }
+
+        var firstMatch = firstSearch.Products.Single();
+        var secondMatch = secondSearch.Products.Single();
+        if (firstMatch.ProductId == secondMatch.ProductId)
+        {
+            if (!finalAnswer.NeedsClarification
+                || !IdsMatch(selected, [firstMatch]))
+            {
+                return Failed("The catalog agent did not clarify the duplicate comparison product.", toolsUsed);
+            }
+
+            return new AssistantQueryResponse(
+                $"{Quote(comparison.FirstSearchText)} and {Quote(comparison.SecondSearchText)} both resolve to {FormatChoice(firstMatch)}. Please choose a different second product.",
+                toolsUsed,
+                AssistantDataScopes.CatalogPublic,
+                false,
+                AssistantResponseTypes.CatalogProducts,
+                new AssistantCatalogProductsData([firstMatch], null));
+        }
+
+        var expectedMatches = new[] { firstMatch, secondMatch };
+        if (finalAnswer.NeedsClarification
+            || !IdsMatch(selected, expectedMatches)
+            || expectedMatches.Any(product => !detailedProductIds.Contains(product.ProductId)))
+        {
+            return Failed("The catalog agent did not load both trusted product details.", toolsUsed);
+        }
+
+        var detailedById = selected.ToDictionary(product => product.ProductId);
+        var first = detailedById[firstMatch.ProductId];
+        var second = detailedById[secondMatch.ProductId];
+        var answer = BuildComparisonAnswer(first, second, comparison.Mode);
+        return new AssistantQueryResponse(
+            answer,
+            toolsUsed,
+            AssistantDataScopes.CatalogPublic,
+            false,
+            AssistantResponseTypes.CatalogProducts,
+            new AssistantCatalogProductsData([first, second], null));
+    }
+
+    private static bool IsValidComparisonSearch(CatalogSearchToolResult search) =>
+        search.PageNumber == 1
+        && search.PageSize == 2
+        && search.MaximumPrice is null
+        && !string.IsNullOrWhiteSpace(search.SearchText);
+
+    private static bool IdsMatch(
+        IReadOnlyCollection<AssistantProductCardDto> actual,
+        IReadOnlyCollection<AssistantProductCardDto> expected)
+    {
+        var actualIds = actual.Select(product => product.ProductId).OrderBy(id => id).ToArray();
+        var expectedIds = expected.Select(product => product.ProductId).Distinct().OrderBy(id => id).ToArray();
+        return actualIds.SequenceEqual(expectedIds);
+    }
+
+    private static string BuildComparisonAnswer(
+        AssistantProductCardDto first,
+        AssistantProductCardDto second,
+        CatalogComparisonMode mode)
+    {
+        if (first.Price == second.Price)
+        {
+            return $"{FormatChoice(first)} and {FormatChoice(second)} have the same verified price, so neither is cheaper. Both products are active; their public descriptions are included in the product data.";
+        }
+
+        var cheaper = first.Price < second.Price ? first : second;
+        var expensive = first.Price < second.Price ? second : first;
+        var difference = expensive.Price - cheaper.Price;
+        if (mode == CatalogComparisonMode.Cheaper)
+        {
+            return $"{FormatChoice(cheaper)} is cheaper than {FormatChoice(expensive)} by {Money(difference)}. Both products are active.";
+        }
+
+        return $"{FormatChoice(first)} compared with {FormatChoice(second)}: {cheaper.Name} is cheaper by {Money(difference)}. Both products are active; their public descriptions are included in the product data.";
+    }
+
+    private static string FormatChoice(AssistantProductCardDto product) =>
+        $"{product.Name} ({product.Sku}) at {Money(product.Price)}";
+
+    private static string Quote(string value) => $"\"{value}\"";
 
     private static bool ValidateRequestedSelection(
         string userMessage,

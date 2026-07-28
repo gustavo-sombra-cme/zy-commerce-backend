@@ -103,6 +103,20 @@ public sealed class AssistantIntegrationTests : IDisposable
     }
 
     [Theory]
+    [InlineData("compare Galaxy and iPhone")]
+    [InlineData("compare iPhone with headphones")]
+    [InlineData("compare SKU ABC123 with SKU MANUAL-IPHN-001")]
+    [InlineData("which is cheaper, Galaxy or iPhone?")]
+    [InlineData("what is the difference between laptop and headphones?")]
+    public void IntentRouter_ShouldRouteProductComparisonsAsCatalogGoals(string question)
+    {
+        var intent = new AssistantIntentRouter().Route(question);
+
+        Assert.Equal(AssistantIntentKind.CatalogGoal, intent.Kind);
+        Assert.Null(intent.SearchText);
+    }
+
+    [Theory]
     [InlineData("products under 20", AssistantIntentKind.CatalogProductsUnderPrice)]
     [InlineData("deactivate product", AssistantIntentKind.Unsupported)]
     public void IntentRouter_ShouldPreservePriceAndUnsafeRouting(string question, AssistantIntentKind expectedKind)

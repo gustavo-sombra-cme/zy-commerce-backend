@@ -123,11 +123,19 @@ internal static class ProjectGraph
         Directory
             .EnumerateFiles(Root, "*.csproj", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !IsNestedWorktreePath(path))
             .ToDictionary(
                 path => Path.GetFileNameWithoutExtension(path),
                 path => path,
                 StringComparer.Ordinal);
+
+    public static bool IsNestedWorktreePath(string path) =>
+        path
+            .Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries)
+            .Any(segment => string.Equals(segment, ".worktrees", StringComparison.OrdinalIgnoreCase));
 
     public static IReadOnlyCollection<string> GetReferencedProjectNames(string projectName)
     {

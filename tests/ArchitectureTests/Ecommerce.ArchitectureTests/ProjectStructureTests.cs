@@ -43,6 +43,19 @@ public sealed class ProjectStructureTests
     }
 
     [Fact]
+    public void ProjectDiscovery_ShouldExcludeOnlyExactWorktreesDirectorySegments()
+    {
+        var root = ProjectGraph.GetRootPath();
+        var nestedWorktreeProject = Path.Combine(root, ".worktrees", "task", "Example.csproj");
+        var normalProject = Path.Combine(root, "src", "Modules", "Example.csproj");
+        var similarlyNamedDirectoryProject = Path.Combine(root, ".worktrees-cache", "Example.csproj");
+
+        Assert.True(ProjectGraph.IsNestedWorktreePath(nestedWorktreeProject));
+        Assert.False(ProjectGraph.IsNestedWorktreePath(normalProject));
+        Assert.False(ProjectGraph.IsNestedWorktreePath(similarlyNamedDirectoryProject));
+    }
+
+    [Fact]
     public void Repository_ShouldNotContain_BootstrapperOrSharedProjects()
     {
         var forbiddenProjects = ProjectGraph.ProjectNames

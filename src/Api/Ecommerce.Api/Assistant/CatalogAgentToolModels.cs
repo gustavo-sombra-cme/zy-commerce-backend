@@ -23,6 +23,7 @@ public sealed record CatalogSearchToolResult(
     int TotalCount,
     int PageNumber,
     int PageSize,
-    decimal? MaximumPrice);
+    decimal? MaximumPrice,
+    string? SearchText);
 
 public sealed record CatalogProductToolResult(AssistantProductCardDto Product);

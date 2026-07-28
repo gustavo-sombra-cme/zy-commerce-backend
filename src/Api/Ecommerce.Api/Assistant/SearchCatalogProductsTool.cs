@@ -85,7 +85,13 @@ public sealed class SearchCatalogProductsTool(
 
             return AssistantToolExecutionResult.Success(
                 Name,
-                new CatalogSearchToolResult(products, result.TotalCount, result.PageNumber, result.PageSize, arguments.MaximumPrice));
+                new CatalogSearchToolResult(
+                    products,
+                    result.TotalCount,
+                    result.PageNumber,
+                    result.PageSize,
+                    arguments.MaximumPrice,
+                    searchText));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

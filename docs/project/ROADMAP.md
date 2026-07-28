@@ -66,6 +66,7 @@
 - Phase 3C Assistant Orchestrator cleanup review
 - Assistant broad catalog search
 - Assistant product detail by natural name or SKU
+- Assistant product comparison by name or SKU
 
 ## Current Priorities
 
@@ -163,7 +164,7 @@ Not currently started:
 
 ## Assistant Candidates
 
-Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, API-layer `OrdersAssistantSubAgent` and `CatalogAssistantSubAgent` classes for CQRS orchestration, read-only broad catalog search by SKU/name text, and natural product detail lookup that returns zero/one/multiple-match responses without guessing. These Catalog paths reuse existing Application queries and response contracts, with fake provider tests only.
+Assistant exposes protected read-only Catalog/Orders orchestration through `POST /api/assistant/query`. It now uses an `IAssistantIntentInterpreter` abstraction with deterministic interpretation as disabled-mode default, config-gated LLM interpretation, selectable OpenAI-style or Gemini provider clients, strict untrusted `AssistantIntentPlan` validation, API-layer `OrdersAssistantSubAgent` and `CatalogAssistantSubAgent` classes for CQRS orchestration, Catalog search by SKU/name/description text, natural product detail lookup, and two-product comparison with independent zero/one/multiple resolution, trusted detail values, and deterministic cheaper-price calculation. These Catalog paths reuse existing Application queries and response contracts, with fake provider tests only.
 
 Runtime assistant sub-agents should remain API-layer classes. Catalog, Orders, and Auth modules should not know about agents, prompts, model planning, Text-to-SQL routing, or provider diagnostics.
 
@@ -175,7 +176,6 @@ Potential future phases:
 - Gemini POC demo validation against account/project-specific free-tier and rate-limit behavior
 - Additional provider-specific payload tuning if future providers are introduced
 - Additional read-only analysis tools after explicit approval
-- Description/full-text product discovery after explicit Catalog search design approval
 - Text-to-SQL operational smoke testing after local read-only connection strings are configured
 - Selectable Text-to-SQL strategy with explicit telemetry, without moving or converting the current Text-to-SQL implementation into a skill until separately approved
 - Dedicated assistant authorization policy or rate limiting

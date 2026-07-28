@@ -163,6 +163,203 @@ public sealed class CatalogAutonomousAgentTests
     }
 
     [Fact]
+    public async Task RunAsync_ProductComparison_ShouldSearchBothTermsLoadBothDetailsAndUseTrustedPrices()
+    {
+        var galaxyId = Guid.NewGuid();
+        var iphoneId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query when query.SearchTerm == "Galaxy"
+                => ComparisonSearchResult(Product(galaxyId, "GALAXY-1", "Galaxy", 799m)),
+            SearchProductsQuery query when query.SearchTerm == "iPhone"
+                => ComparisonSearchResult(Product(iphoneId, "IPHONE-1", "iPhone", 999m)),
+            GetProductByIdQuery query when query.ProductId == galaxyId
+                => Details(galaxyId, "GALAXY-1", "Galaxy", "Android phone", 799m, true),
+            GetProductByIdQuery query when query.ProductId == iphoneId
+                => Details(iphoneId, "IPHONE-1", "iPhone", "iOS phone", 999m, true),
+            _ => throw new InvalidOperationException("Unexpected query.")
+        });
+        var model = new ScriptedModel(
+            ToolCall("search-galaxy", SearchCatalogProductsTool.ToolName, new { searchText = "Galaxy", pageNumber = 1, pageSize = 2 }),
+            ToolCall("search-iphone", SearchCatalogProductsTool.ToolName, new { searchText = "iPhone", pageNumber = 1, pageSize = 2 }),
+            ToolCall("detail-galaxy", GetCatalogProductTool.ToolName, new { productId = galaxyId }),
+            ToolCall("detail-iphone", GetCatalogProductTool.ToolName, new { productId = iphoneId }),
+            Complete(CatalogAgentFinalResponseType.CatalogProducts, iphoneId, galaxyId));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("which is cheaper, Galaxy or iPhone?"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(AssistantResponseTypes.CatalogProducts, response.ResponseType);
+        Assert.Equal(4, sender.Requests.Count);
+        var data = Assert.IsType<AssistantCatalogProductsData>(response.Data);
+        Assert.Equal([galaxyId, iphoneId], data.Products.Select(product => product.ProductId));
+        Assert.Contains("Galaxy", response.Answer, StringComparison.Ordinal);
+        Assert.Contains("cheaper", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("200.00", response.Answer, StringComparison.Ordinal);
+        Assert.DoesNotContain("Model wording", response.Answer, StringComparison.Ordinal);
+        var searches = sender.Requests.OfType<SearchProductsQuery>().ToArray();
+        Assert.All(searches, query => Assert.True(query.IsActive));
+        Assert.All(searches, query => Assert.Equal(2, query.PageSize));
+    }
+
+    [Fact]
+    public async Task RunAsync_ProductComparisonWithMissingSide_ShouldReturnSupportedEmptyResult()
+    {
+        var galaxyId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query when query.SearchTerm == "Galaxy"
+                => ComparisonSearchResult(Product(galaxyId, "GALAXY-1", "Galaxy", 799m)),
+            SearchProductsQuery query when query.SearchTerm == "missing"
+                => ComparisonSearchResult(),
+            _ => throw new InvalidOperationException("Unexpected query.")
+        });
+        var model = new ScriptedModel(
+            ToolCall("search-galaxy", SearchCatalogProductsTool.ToolName, new { searchText = "Galaxy", pageNumber = 1, pageSize = 2 }),
+            ToolCall("search-missing", SearchCatalogProductsTool.ToolName, new { searchText = "missing", pageNumber = 1, pageSize = 2 }),
+            Complete(CatalogAgentFinalResponseType.CatalogProducts));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("compare Galaxy and missing"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Empty(Assert.IsType<AssistantCatalogProductsData>(response.Data).Products);
+        Assert.Contains("missing", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, sender.Requests.Count);
+    }
+
+    [Fact]
+    public async Task RunAsync_SkuComparison_ShouldBindEachNormalizedSkuSearch()
+    {
+        var sender = new RecordingSender(_ => ComparisonSearchResult());
+        var model = new ScriptedModel(
+            ToolCall("search-first", SearchCatalogProductsTool.ToolName, new { searchText = "ABC123", pageNumber = 1, pageSize = 2 }),
+            ToolCall("search-second", SearchCatalogProductsTool.ToolName, new { searchText = "MANUAL-IPHN-001", pageNumber = 1, pageSize = 2 }),
+            Complete(CatalogAgentFinalResponseType.CatalogProducts));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("compare SKU ABC123 with SKU MANUAL-IPHN-001"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Equal(
+            ["ABC123", "MANUAL-IPHN-001"],
+            sender.Requests.OfType<SearchProductsQuery>().Select(query => query.SearchTerm));
+    }
+
+    [Fact]
+    public async Task RunAsync_AmbiguousProductComparison_ShouldReturnChoicesWithoutGuessing()
+    {
+        var firstGalaxyId = Guid.NewGuid();
+        var secondGalaxyId = Guid.NewGuid();
+        var iphoneId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query when query.SearchTerm == "Galaxy"
+                => ComparisonSearchResult(
+                    Product(firstGalaxyId, "GALAXY-1", "Galaxy One", 699m),
+                    Product(secondGalaxyId, "GALAXY-2", "Galaxy Two", 799m)),
+            SearchProductsQuery query when query.SearchTerm == "iPhone"
+                => ComparisonSearchResult(Product(iphoneId, "IPHONE-1", "iPhone", 999m)),
+            _ => throw new InvalidOperationException("Unexpected query.")
+        });
+        var model = new ScriptedModel(
+            ToolCall("search-galaxy", SearchCatalogProductsTool.ToolName, new { searchText = "Galaxy", pageNumber = 1, pageSize = 2 }),
+            ToolCall("search-iphone", SearchCatalogProductsTool.ToolName, new { searchText = "iPhone", pageNumber = 1, pageSize = 2 }),
+            CompleteWithClarification(firstGalaxyId, secondGalaxyId));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("compare Galaxy and iPhone"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        var choices = Assert.IsType<AssistantCatalogProductsData>(response.Data).Products;
+        Assert.Equal(2, choices.Count);
+        Assert.DoesNotContain(choices, product => product.ProductId == iphoneId);
+        Assert.Contains("will not guess", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, sender.Requests.Count);
+    }
+
+    [Fact]
+    public async Task RunAsync_ComparisonTermsResolvingToSameProduct_ShouldAskForDifferentProduct()
+    {
+        var productId = Guid.NewGuid();
+        var sender = new RecordingSender(_ =>
+            ComparisonSearchResult(Product(productId, "PHONE-1", "Phone", 699m)));
+        var model = new ScriptedModel(
+            ToolCall("search-phone", SearchCatalogProductsTool.ToolName, new { searchText = "phone", pageNumber = 1, pageSize = 2 }),
+            ToolCall("search-sku", SearchCatalogProductsTool.ToolName, new { searchText = "PHONE-1", pageNumber = 1, pageSize = 2 }),
+            CompleteWithClarification(productId));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("compare phone and SKU PHONE-1"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Single(Assert.IsType<AssistantCatalogProductsData>(response.Data).Products);
+        Assert.Contains("different second product", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, sender.Requests.Count);
+    }
+
+    [Fact]
+    public async Task RunAsync_ProductComparisonWithoutBothDetails_ShouldFailSafely()
+    {
+        var galaxyId = Guid.NewGuid();
+        var iphoneId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query when query.SearchTerm == "Galaxy"
+                => ComparisonSearchResult(Product(galaxyId, "GALAXY-1", "Galaxy", 799m)),
+            SearchProductsQuery query when query.SearchTerm == "iPhone"
+                => ComparisonSearchResult(Product(iphoneId, "IPHONE-1", "iPhone", 999m)),
+            GetProductByIdQuery query when query.ProductId == galaxyId
+                => Details(galaxyId, "GALAXY-1", "Galaxy", "Android phone", 799m, true),
+            _ => throw new InvalidOperationException("Unexpected query.")
+        });
+        var model = new ScriptedModel(
+            ToolCall("search-galaxy", SearchCatalogProductsTool.ToolName, new { searchText = "Galaxy", pageNumber = 1, pageSize = 2 }),
+            ToolCall("search-iphone", SearchCatalogProductsTool.ToolName, new { searchText = "iPhone", pageNumber = 1, pageSize = 2 }),
+            ToolCall("detail-galaxy", GetCatalogProductTool.ToolName, new { productId = galaxyId }),
+            Complete(CatalogAgentFinalResponseType.CatalogProducts, galaxyId, iphoneId));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("compare Galaxy and iPhone"), CancellationToken.None);
+
+        Assert.True(response.Unsupported);
+        Assert.Null(response.Data);
+    }
+
+    [Fact]
+    public async Task RunAsync_EqualPriceComparison_ShouldNotClaimEitherProductIsCheaper()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var sender = new RecordingSender(request => request switch
+        {
+            SearchProductsQuery query when query.SearchTerm == "first"
+                => ComparisonSearchResult(Product(firstId, "FIRST", "First", 100m)),
+            SearchProductsQuery query when query.SearchTerm == "second"
+                => ComparisonSearchResult(Product(secondId, "SECOND", "Second", 100m)),
+            GetProductByIdQuery query when query.ProductId == firstId
+                => Details(firstId, "FIRST", "First", null, 100m, true),
+            GetProductByIdQuery query when query.ProductId == secondId
+                => Details(secondId, "SECOND", "Second", null, 100m, true),
+            _ => throw new InvalidOperationException("Unexpected query.")
+        });
+        var model = new ScriptedModel(
+            ToolCall("search-first", SearchCatalogProductsTool.ToolName, new { searchText = "first", pageNumber = 1, pageSize = 2 }),
+            ToolCall("search-second", SearchCatalogProductsTool.ToolName, new { searchText = "second", pageNumber = 1, pageSize = 2 }),
+            ToolCall("detail-first", GetCatalogProductTool.ToolName, new { productId = firstId }),
+            ToolCall("detail-second", GetCatalogProductTool.ToolName, new { productId = secondId }),
+            Complete(CatalogAgentFinalResponseType.CatalogProducts, firstId, secondId));
+
+        var response = await CreateAgent(sender, model)
+            .RunAsync(Request("which is cheaper, first or second?"), CancellationToken.None);
+
+        Assert.False(response.Unsupported);
+        Assert.Contains("same verified price", response.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("neither", response.Answer, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RunAsync_InactiveDetailResult_ShouldFailWithoutExposingTheProduct()
     {
         var productId = Guid.NewGuid();
@@ -433,8 +630,20 @@ public sealed class CatalogAutonomousAgentTests
     private static ProductDetailsDto Details(Guid id, bool active) =>
         new(id, "PHONE-1", "Phone", "Verified details", active, DateTimeOffset.UtcNow, null) { Price = 699m };
 
+    private static ProductDetailsDto Details(
+        Guid id,
+        string sku,
+        string name,
+        string? description,
+        decimal price,
+        bool active) =>
+        new(id, sku, name, description, active, DateTimeOffset.UtcNow, null) { Price = price };
+
     private static CatalogPagedResult SearchResult(params ProductListItemDto[] products) =>
         new(products, 1, 10, products.Length);
+
+    private static CatalogPagedResult ComparisonSearchResult(params ProductListItemDto[] products) =>
+        new(products, 1, 2, products.Length);
 
     private static AssistantModelResponse ToolCall(string id, string name, object arguments) =>
         new(

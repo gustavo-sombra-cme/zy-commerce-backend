@@ -833,6 +833,26 @@ Latest code execution after Assistant Product Detail By Search:
 - Architecture tests: 209 passed.
 - Manual API verification passed for unique, zero, and multiple matches; broad search and price-filter regressions; inactive exclusion; write/admin refusal; and raw SQL/`genericTable` non-exposure.
 
+Latest code execution after Assistant Product Comparison By Name Or SKU:
+
+- Added conservative read-only parsing for `compare ... and/with ...`, `which is cheaper ... or ...`, and `what is the difference between ... and ...` Catalog goals.
+- Each side is searched independently through the existing active-only `catalog_search_products` tool with page `1` and page size `2`; optional leading `SKU` markers are normalized independently.
+- Zero matches return a supported empty `catalogProducts` response. Multiple matches return bounded verified choices and do not guess.
+- Two unique, distinct matches require trusted `catalog_get_product` results before comparison. Duplicate resolution asks for a different second product.
+- Comparison answers and price differences are rebuilt deterministically from trusted detail DTOs. Equal prices explicitly report that neither product is cheaper.
+- Existing `POST /api/assistant/query`, `catalogProducts`, `AssistantCatalogProductsData`, public product fields, Catalog Application queries, and the two-tool Catalog agent allowlist were reused.
+- Restored the committed `Assistant:TextToSql:Enabled` default to `false`; no Text-to-SQL implementation changed.
+- Architecture project discovery now excludes only an exact `.worktrees` path segment, with focused coverage preserving normal and similarly named paths.
+- No frontend, MCP, schema, migration, package, raw SQL, `genericTable`, or assistant write/admin behavior changed.
+- Added demo slide source `docs/demo/features/assistant-product-comparison-demo-slides.md`.
+- Focused comparison and verification-cleanup tests: 37 passed.
+- `dotnet restore Ecommerce.sln`: passed with existing NU1900 vulnerability-feed warnings.
+- `dotnet build Ecommerce.sln --no-restore`: passed with 0 errors and existing NU1900 warnings.
+- Auth unit tests: 68 passed.
+- Catalog unit tests: 86 passed.
+- Orders unit tests: 23 passed.
+- Architecture tests: 221 passed.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:
