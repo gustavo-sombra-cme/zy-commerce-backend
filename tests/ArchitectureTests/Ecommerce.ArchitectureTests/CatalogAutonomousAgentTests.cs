@@ -95,6 +95,37 @@ public sealed class CatalogAutonomousAgentTests
     }
 
     [Fact]
+    public void ProductReadRepository_ShouldSearchSkuNameAndDescriptionBeforeCountingAndPaging()
+    {
+        var root = ProjectGraph.GetRootPath();
+        var source = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "Modules",
+            "Catalog",
+            "Ecommerce.Catalog.Infrastructure",
+            "Products",
+            "ProductReadRepository.cs"));
+        var skuFilter = source.IndexOf(
+            "EF.Property<string>(product, nameof(ProductSearchReadModel.Sku))",
+            StringComparison.Ordinal);
+        var nameFilter = source.IndexOf(
+            "EF.Property<string>(product, nameof(ProductSearchReadModel.Name))",
+            StringComparison.Ordinal);
+        var descriptionFilter = source.IndexOf(
+            "product.Description != null && EF.Functions.Like(product.Description, searchPattern)",
+            StringComparison.Ordinal);
+        var count = source.IndexOf("CountAsync", StringComparison.Ordinal);
+        var paging = source.IndexOf(".Skip(", StringComparison.Ordinal);
+
+        Assert.True(skuFilter >= 0);
+        Assert.True(nameFilter >= 0);
+        Assert.True(descriptionFilter >= 0);
+        Assert.True(descriptionFilter < count);
+        Assert.True(descriptionFilter < paging);
+    }
+
+    [Fact]
     public async Task RunAsync_ShouldCompleteBoundedSearchThenTrustedDetailFlow()
     {
         var productId = Guid.NewGuid();

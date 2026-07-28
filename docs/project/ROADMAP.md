@@ -66,6 +66,7 @@
 - Phase 3C Assistant Orchestrator cleanup review
 - Assistant broad catalog search
 - Assistant product detail by natural name or SKU
+- Assistant catalog search by product description
 
 ## Current Priorities
 
@@ -175,7 +176,6 @@ Potential future phases:
 - Gemini POC demo validation against account/project-specific free-tier and rate-limit behavior
 - Additional provider-specific payload tuning if future providers are introduced
 - Additional read-only analysis tools after explicit approval
-- Description/full-text product discovery after explicit Catalog search design approval
 - Text-to-SQL operational smoke testing after local read-only connection strings are configured
 - Selectable Text-to-SQL strategy with explicit telemetry, without moving or converting the current Text-to-SQL implementation into a skill until separately approved
 - Dedicated assistant authorization policy or rate limiting
