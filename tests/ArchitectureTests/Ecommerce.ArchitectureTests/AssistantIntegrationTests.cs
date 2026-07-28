@@ -459,8 +459,11 @@ public sealed class AssistantIntegrationTests : IDisposable
         Assert.Contains("AssistantTextToSqlPlanParser", program, StringComparison.Ordinal);
         Assert.Contains("AssistantTextToSqlResponseMapper", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AssistantOrchestrator", program[program.IndexOf("IAssistantReadOnlySqlExecutor", StringComparison.Ordinal)..], StringComparison.Ordinal);
-        Assert.Contains("\"TextToSql\"", appsettings, StringComparison.Ordinal);
-        Assert.Contains("\"Enabled\": false", appsettings, StringComparison.Ordinal);
+        using var configuration = JsonDocument.Parse(appsettings);
+        var textToSql = configuration.RootElement
+            .GetProperty("Assistant")
+            .GetProperty("TextToSql");
+        Assert.False(textToSql.GetProperty("Enabled").GetBoolean());
         Assert.DoesNotContain("AssistantCatalogReadOnly", appsettings, StringComparison.Ordinal);
         Assert.DoesNotContain("AssistantOrdersReadOnly", appsettings, StringComparison.Ordinal);
     }

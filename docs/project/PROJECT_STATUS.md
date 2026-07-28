@@ -833,6 +833,19 @@ Latest code execution after Assistant Product Detail By Search:
 - Architecture tests: 209 passed.
 - Manual API verification passed for unique, zero, and multiple matches; broad search and price-filter regressions; inactive exclusion; write/admin refusal; and raw SQL/`genericTable` non-exposure.
 
+Latest code execution after Assistant Catalog Search By Product Description And Verification Blocker Cleanup:
+
+- Confirmed the existing Catalog Infrastructure product search read model matches nullable Description text in addition to SKU and Name.
+- Added focused regression coverage that guards all three search predicates and verifies Description filtering remains before count and paging.
+- Architecture project discovery now excludes only paths beneath an exact `.worktrees` directory segment while continuing to detect unapproved projects elsewhere.
+- Restored committed `Assistant:TextToSql:Enabled` to its documented fail-closed `false` default and strengthened the configuration test to inspect that exact JSON property.
+- Existing assistant catalog paths continue to reuse `SearchProductsQuery`; no new endpoint, frontend contract, MCP behavior, Text-to-SQL implementation, schema, migration, raw SQL exposure, `genericTable`, or assistant write/admin behavior was added.
+- `dotnet restore Ecommerce.sln`: passed with existing NU1900 warnings for the unreachable vulnerability feed.
+- `dotnet build Ecommerce.sln --no-restore`: passed with 0 errors and existing NU1900 warnings.
+- Focused ProjectGraph, Text-to-SQL disabled/configuration, and description-search tests: 5 passed.
+- `dotnet test Ecommerce.sln --no-build`: passed; Catalog unit tests 86, Auth unit tests 68, Orders unit tests 23, and architecture tests 210.
+- ADR-001, ADR-004, and ADR-007 remain unchanged; no new or updated ADR was required.
+
 ## Intentionally Absent
 
 The repository intentionally does not currently include:

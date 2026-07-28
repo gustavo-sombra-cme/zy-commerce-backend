@@ -53,7 +53,7 @@ This file is designed to allow a future AI session to resume project work in les
 - Phase 3A runtime API-layer Orders assistant sub-agent extraction; behavior-preserving refactor, no Text-to-SQL strategy change
 - Phase 3B runtime API-layer Catalog assistant sub-agent extraction; behavior-preserving refactor, no broad product search addition
 - Phase 3C Assistant Orchestrator cleanup review; documentation-only, no new runtime sub-agents, no Text-to-SQL changes
-- Assistant broad catalog search; read-only product discovery by SKU/name text through existing Catalog Application search, active-only, no Text-to-SQL internal changes
+- Assistant broad catalog search; read-only product discovery by SKU, name, or nullable description text through existing Catalog Application search, active-only, no Text-to-SQL internal changes
 - Assistant product detail by natural name or SKU; zero matches return supported empty choices, unique active matches return existing `catalogProduct` detail, and multiple matches return choices without guessing
 - Bounded autonomous Catalog assistant; provider-neutral goal/tool loop, two allowlisted read tools, trusted per-execution identifiers, grounded structured responses, hard runtime limits, and database-backed maximum-price filtering
 
@@ -121,7 +121,7 @@ All approved projects exist and build successfully:
 - Order-specific assistant CQRS orchestration lives behind API-layer `IOrdersAssistantSubAgent`/`OrdersAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - Catalog-specific assistant CQRS orchestration lives behind API-layer `ICatalogAssistantSubAgent`/`CatalogAssistantSubAgent`; module Application layers remain unaware of assistant agents.
 - Phase 3C confirmed `AssistantOrchestrator` is coordination-focused after Orders/Catalog sub-agent extraction. Do not add Support/Safety sub-agents unless future complexity creates clear value.
-- Broad catalog search is supported through `CatalogSearchProducts`, handled by `CatalogAssistantSubAgent`, and dispatched to existing `SearchProductsQuery` with `IsActive = true`, page `1`, and page size `10`. It searches SKU and Name through existing Catalog support and reuses `catalogProducts` structured data.
+- Broad catalog search is supported through `CatalogSearchProducts`, handled by `CatalogAssistantSubAgent`, and dispatched to existing `SearchProductsQuery` with `IsActive = true`, page `1`, and page size `10`. Catalog Infrastructure matches SKU, Name, and nullable Description through the existing product search read model and reuses `catalogProducts` structured data.
 - Natural product detail lookup is supported through `CatalogGetProductBySearch`. It searches active products with page size `2`, uses `GetProductByIdQuery` only for one match, rechecks active status, returns empty `catalogProducts` for zero matches, returns existing `catalogProduct` for one match, and returns up to two `catalogProducts` choices for multiple matches.
 - `LlmAssistantIntentInterpreter` is available behind `Assistant:Llm:Enabled` and uses `IAssistantLlmClient`, `HttpClientFactory`, and `System.Text.Json`.
 - Provider selection is backend configuration only. `Assistant:Llm:Provider` defaults to `OpenAI`; `ECOMMERCE_ASSISTANT_LLM_PROVIDER=Gemini` selects `GeminiAssistantLlmClient`.
@@ -365,6 +365,7 @@ Do NOT add these until explicitly approved with APPROVED: EXECUTE.
 49. Phase 3C Assistant Orchestrator cleanup review
 50. Assistant broad catalog search
 51. Assistant product detail by natural name or SKU
+52. Assistant catalog search by product description
 
 **In Progress:**
 - Maintaining NEXT_SESSION.md after every execution task
